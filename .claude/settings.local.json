@@ -1,0 +1,11 @@
+{
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ],
+  "permissions": {
+    "additionalDirectories": [
+      "c:\\Users\\berri\\Desktop\\Universidad\\Captzone\\Aero\\apps\\web\\app\\student\\vendor\\[id]"
+    ]
+  }
+}
