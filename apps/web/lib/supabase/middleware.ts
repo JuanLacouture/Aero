@@ -27,9 +27,16 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname
   const isStudentRoute = path.startsWith('/student')
   const isVendorRoute = path.startsWith('/vendor')
+  const isAuthPage = path === '/login' || path === '/register'
 
   if (!user && (isStudentRoute || isVendorRoute)) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  if (user && isAuthPage) {
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    const dest = profile?.role === 'vendor' ? '/vendor/dashboard' : '/student/home'
+    return NextResponse.redirect(new URL(dest, request.url))
   }
 
   return supabaseResponse
