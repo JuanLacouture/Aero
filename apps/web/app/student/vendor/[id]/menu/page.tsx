@@ -19,6 +19,12 @@ type Vendor = {
   schedule_end: string | null
 }
 
+type ProductImage = {
+  id: string
+  image_url: string
+  order_index: number | null
+}
+
 type Product = {
   id: string
   name: string
@@ -27,9 +33,14 @@ type Product = {
   category: string | null
   is_available: boolean | null
   vendor_id: string
+  product_images: ProductImage[]
 }
 
 const fmt = (n: number) => `$${Math.round(n).toLocaleString('es-CO')}`
+
+function sortedImages(images: ProductImage[]): ProductImage[] {
+  return [...images].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+}
 
 export default function VendorMenuPage() {
   const { id } = useParams<{ id: string }>()
@@ -38,6 +49,7 @@ export default function VendorMenuPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [carouselIndex, setCarouselIndex] = useState(0)
 
   const { addItem, items, count, total, vendor_id: cartVendor } = useCartStore()
 
@@ -45,18 +57,28 @@ export default function VendorMenuPage() {
     const supabase = createClient()
     Promise.all([
       supabase.from('vendors').select('*').eq('id', id).single(),
-      supabase.from('products').select('*').eq('vendor_id', id).eq('is_available', true).order('category'),
+      supabase
+        .from('products')
+        .select('*, product_images(*)')
+        .eq('vendor_id', id)
+        .eq('is_available', true)
+        .order('category'),
     ]).then(([vRes, pRes]) => {
       if (vRes.data) setVendor(vRes.data)
-      if (pRes.data) setProducts(pRes.data)
+      if (pRes.data) setProducts(pRes.data as Product[])
       setLoading(false)
     })
   }, [id])
 
+  function openProduct(product: Product) {
+    setSelectedProduct(product)
+    setCarouselIndex(0)
+  }
+
   const cartCount = count()
   const cartTotal = total()
   const hasCart = cartVendor === id && items.length > 0
-  const categories = [...new Set(products.map(p => p.category ?? 'Otros'))]
+  const categories = Array.from(new Set<string>(products.map(p => p.category ?? 'Otros')))
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -72,11 +94,15 @@ export default function VendorMenuPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Cover image */}
-      <div className="relative h-52 bg-primary-light">
-        {vendor.cover_image_url
-          ? <img src={vendor.cover_image_url} alt={vendor.business_name} className="w-full h-full object-cover" />
-          : <div className="w-full h-full flex items-center justify-center text-6xl">🍽️</div>}
+      {/* Cover */}
+      <div className="relative h-52">
+        {vendor.cover_image_url ? (
+          <img src={vendor.cover_image_url} alt={vendor.business_name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-vendor/40 to-vendor/10 flex items-center justify-center">
+            <span className="text-6xl opacity-40">🍽️</span>
+          </div>
+        )}
         <button
           onClick={() => router.back()}
           className="absolute top-12 left-4 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow"
@@ -90,7 +116,9 @@ export default function VendorMenuPage() {
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-display font-bold text-text-primary">{vendor.business_name}</h1>
-            {vendor.description && <p className="text-text-secondary text-sm font-body mt-0.5 line-clamp-2">{vendor.description}</p>}
+            {vendor.description && (
+              <p className="text-text-secondary text-sm font-body mt-0.5 line-clamp-2">{vendor.description}</p>
+            )}
           </div>
           <span className={cn('text-xs font-semibold px-2 py-1 rounded-full shrink-0',
             vendor.is_open ? 'bg-success/10 text-success' : 'bg-gray-100 text-gray-500')}>
@@ -101,10 +129,14 @@ export default function VendorMenuPage() {
           <div className="flex items-center gap-1">
             <Star size={13} className="text-yellow-400 fill-yellow-400" />
             <span className="font-display font-semibold">{vendor.rating_avg?.toFixed(1) ?? '—'}</span>
-            {vendor.rating_count != null && <span className="text-text-secondary">({vendor.rating_count})</span>}
+            {vendor.rating_count != null && (
+              <span className="text-text-secondary">({vendor.rating_count})</span>
+            )}
           </div>
           {vendor.schedule_start && (
-            <span className="text-text-secondary">{vendor.schedule_start.slice(0,5)} – {vendor.schedule_end?.slice(0,5)}</span>
+            <span className="text-text-secondary">
+              {vendor.schedule_start.slice(0, 5)} – {vendor.schedule_end?.slice(0, 5)}
+            </span>
           )}
         </div>
       </div>
@@ -122,31 +154,51 @@ export default function VendorMenuPage() {
             <div className="flex flex-col gap-3">
               {products.filter(p => (p.category ?? 'Otros') === cat).map(product => {
                 const qty = items.find(i => i.product_id === product.id)?.quantity ?? 0
+                const thumbnail = sortedImages(product.product_images)[0]
                 return (
                   <div key={product.id} className="bg-white rounded-card shadow-sm p-3 flex gap-3 active:scale-[0.98] transition-transform">
-                    <button onClick={() => setSelectedProduct(product)} className="flex-1 text-left">
+                    <button onClick={() => openProduct(product)} className="flex-1 text-left min-w-0">
                       <h3 className="font-display font-semibold text-text-primary leading-tight">{product.name}</h3>
-                      {product.description && <p className="text-text-secondary text-sm font-body mt-0.5 line-clamp-2">{product.description}</p>}
+                      {product.description && (
+                        <p className="text-text-secondary text-sm font-body mt-0.5 line-clamp-2">{product.description}</p>
+                      )}
                       <p className="text-primary font-display font-bold mt-1.5">{fmt(product.price)}</p>
                     </button>
                     <div className="flex flex-col items-end justify-between shrink-0">
-                      <div className="w-16 h-16 bg-background rounded-xl flex items-center justify-center text-2xl">🍽️</div>
+                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-background">
+                        {thumbnail ? (
+                          <img
+                            src={thumbnail.image_url}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/20">
+                            <span className="text-2xl">🍽️</span>
+                          </div>
+                        )}
+                      </div>
                       {qty > 0 ? (
                         <div className="flex items-center gap-1 mt-2">
-                          <button onClick={() => useCartStore.getState().updateQuantity(product.id, qty - 1)}
-                            className="w-6 h-6 rounded-full border border-primary flex items-center justify-center">
+                          <button
+                            onClick={() => useCartStore.getState().updateQuantity(product.id, qty - 1)}
+                            className="w-6 h-6 rounded-full border border-primary flex items-center justify-center"
+                          >
                             <Minus size={12} className="text-primary" />
                           </button>
                           <span className="text-sm font-bold w-4 text-center">{qty}</span>
-                          <button onClick={() => addItem({ product_id: product.id, name: product.name, price: product.price, quantity: 1 }, id, vendor.business_name)}
-                            className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                          <button
+                            onClick={() => addItem({ product_id: product.id, name: product.name, price: product.price, quantity: 1 }, id, vendor.business_name)}
+                            className="w-6 h-6 rounded-full bg-primary flex items-center justify-center"
+                          >
                             <Plus size={12} className="text-white" />
                           </button>
                         </div>
                       ) : (
                         <button
                           onClick={() => addItem({ product_id: product.id, name: product.name, price: product.price, quantity: 1 }, id, vendor.business_name)}
-                          className="mt-2 w-7 h-7 bg-primary rounded-full flex items-center justify-center shadow">
+                          className="mt-2 w-7 h-7 bg-primary rounded-full flex items-center justify-center shadow"
+                        >
                           <Plus size={15} className="text-white" />
                         </button>
                       )}
@@ -175,34 +227,89 @@ export default function VendorMenuPage() {
 
       {/* Product detail sheet */}
       {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => setSelectedProduct(null)}>
-          <div className="bg-white rounded-t-3xl p-5 pb-10 max-w-lg mx-auto w-full" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40"
+          onClick={() => setSelectedProduct(null)}
+        >
+          <div
+            className="bg-white rounded-t-3xl p-5 pb-10 max-w-lg mx-auto w-full"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-            <div className="h-44 bg-background rounded-2xl flex items-center justify-center text-6xl mb-4">🍽️</div>
+
+            {/* Image carousel */}
+            {(() => {
+              const images = sortedImages(selectedProduct.product_images)
+              if (images.length === 0) return (
+                <div className="h-48 bg-gradient-to-br from-primary/10 to-primary/20 rounded-2xl flex items-center justify-center mb-4">
+                  <span className="text-6xl">🍽️</span>
+                </div>
+              )
+              return (
+                <div className="mb-4">
+                  <div className="relative h-48 rounded-2xl overflow-hidden">
+                    <img
+                      src={images[carouselIndex].image_url}
+                      alt={selectedProduct.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  {images.length > 1 && (
+                    <div className="flex justify-center gap-1.5 mt-2">
+                      {images.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setCarouselIndex(i)}
+                          className={cn(
+                            'w-1.5 h-1.5 rounded-full transition-colors',
+                            i === carouselIndex ? 'bg-primary' : 'bg-gray-300'
+                          )}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
             <h2 className="text-xl font-display font-bold text-text-primary">{selectedProduct.name}</h2>
-            {selectedProduct.description && <p className="text-text-secondary font-body text-sm mt-1.5">{selectedProduct.description}</p>}
+            {selectedProduct.description && (
+              <p className="text-text-secondary font-body text-sm mt-1.5">{selectedProduct.description}</p>
+            )}
             <p className="text-primary font-display font-bold text-xl mt-2">{fmt(selectedProduct.price)}</p>
+
             {(() => {
               const qty = items.find(i => i.product_id === selectedProduct.id)?.quantity ?? 0
               return qty > 0 ? (
                 <div className="flex items-center gap-3 mt-5">
-                  <button onClick={() => useCartStore.getState().updateQuantity(selectedProduct.id, qty - 1)}
-                    className="w-10 h-10 rounded-full border-2 border-primary flex items-center justify-center">
+                  <button
+                    onClick={() => useCartStore.getState().updateQuantity(selectedProduct.id, qty - 1)}
+                    className="w-10 h-10 rounded-full border-2 border-primary flex items-center justify-center"
+                  >
                     <Minus size={18} className="text-primary" />
                   </button>
                   <span className="text-xl font-bold w-6 text-center">{qty}</span>
-                  <button onClick={() => addItem({ product_id: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.price, quantity: 1 }, id, vendor.business_name)}
-                    className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+                  <button
+                    onClick={() => addItem({ product_id: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.price, quantity: 1 }, id, vendor.business_name)}
+                    className="w-10 h-10 rounded-full bg-primary flex items-center justify-center"
+                  >
                     <Plus size={18} className="text-white" />
                   </button>
-                  <button onClick={() => { setSelectedProduct(null); router.push('/student/order/new') }}
-                    className="flex-1 bg-primary text-white rounded-button py-2.5 font-display font-semibold flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => { setSelectedProduct(null); router.push('/student/order/new') }}
+                    className="flex-1 bg-primary text-white rounded-button py-2.5 font-display font-semibold flex items-center justify-center gap-2"
+                  >
                     <ShoppingBag size={16} /> Ver pedido
                   </button>
                 </div>
               ) : (
-                <button onClick={() => { addItem({ product_id: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.price, quantity: 1 }, id, vendor.business_name); setSelectedProduct(null) }}
-                  className="w-full mt-5 bg-primary text-white rounded-button py-3.5 font-display font-semibold">
+                <button
+                  onClick={() => {
+                    addItem({ product_id: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.price, quantity: 1 }, id, vendor.business_name)
+                    setSelectedProduct(null)
+                  }}
+                  className="w-full mt-5 bg-primary text-white rounded-button py-3.5 font-display font-semibold"
+                >
                   Agregar al pedido — {fmt(selectedProduct.price)}
                 </button>
               )

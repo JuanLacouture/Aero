@@ -103,7 +103,9 @@ function VendorCard({ vendor }: { vendor: VendorRow }) {
           {vendor.cover_image_url ? (
             <img src={vendor.cover_image_url} alt={vendor.business_name} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl">🍽️</div>
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary/10">
+              <span className="text-4xl opacity-60">🍽️</span>
+            </div>
           )}
           <span className={`absolute top-2 right-2 text-xs font-display font-semibold px-2 py-0.5 rounded-full ${
             vendor.is_open ? 'bg-success text-white' : 'bg-gray-500/80 text-white'

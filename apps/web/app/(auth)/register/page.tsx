@@ -27,7 +27,7 @@ export default function RegisterPage() {
     const { data, error: authError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, role } },
+      options: { data: { full_name: fullName, role, business_name: businessName } },
     })
 
     if (authError) {
@@ -90,8 +90,6 @@ export default function RegisterPage() {
 
     window.location.href = data.url
   }
-
-  const accentColor = role === 'vendor' ? 'vendor' : 'primary'
 
   return (
     <div className="min-h-screen bg-background flex flex-col max-w-lg mx-auto">

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useCartStore } from '@/lib/stores/cart'
-import { ArrowLeft, MapPin, Clock, Minus, Plus, CreditCard, Smartphone, QrCode, Wallet } from 'lucide-react'
+import { ArrowLeft, MapPin, Clock, Minus, Plus, Smartphone, QrCode, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const fmt = (n: number) => `$${Math.round(n).toLocaleString('es-CO')}`
@@ -23,7 +23,7 @@ const PAYMENT_METHODS = [
 
 export default function NewOrderPage() {
   const router = useRouter()
-  const { items, vendor_id, vendor_name, total, updateQuantity, removeItem, clear } = useCartStore()
+  const { items, vendor_id, vendor_name, total, updateQuantity, clear } = useCartStore()
 
   const [step, setStep] = useState<Step>('cart')
   const [deliveryPoints, setDeliveryPoints] = useState<DeliveryPoint[]>([])
