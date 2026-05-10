@@ -63,7 +63,7 @@ export default async function StudentHomePage() {
             <h2 className="text-base font-display font-bold text-text-primary mb-3">
               Próximamente disponibles
             </h2>
-            <div className="flex flex-col gap-3 opacity-60 pointer-events-none">
+            <div className="flex flex-col gap-3 opacity-60">
               {closedVendors.map(v => <VendorCard key={v.id} vendor={v} />)}
             </div>
           </div>

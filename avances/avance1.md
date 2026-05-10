@@ -221,6 +221,64 @@ Estos bugs bloqueaban completamente el flujo vendor→producto→estudiante:
 
 ## Últimos Cambios Implementados (9-10 Mayo 2026)
 
+### Flujo de Pago Simulado + Recibo — `/student/order/new`
+
+Se completó el paso de pago con formularios simulados por método y una pantalla de recibo al finalizar.
+
+#### Formularios por método de pago
+
+| Método | Formulario |
+|---|---|
+| **Saldo AERO** | Widget con saldo disponible ($50.000 simulado), monto a descontar y saldo restante |
+| **QR** | SVG estático de código QR con referencia única (`AERO-XXXXXX`) y monto |
+| **Nequi** | Input de celular `+57` con validación de 10 dígitos, monto en violeta |
+| **Daviplata** | Mismo formulario en rojo, validación igual |
+
+El botón "Pagar" valida el número de celular antes de enviar la orden. Si Nequi/Daviplata no tienen 10 dígitos, muestra error y no envía.
+
+#### Recibo post-pago
+
+Después de confirmar el pedido, se muestra una pantalla de recibo en la misma página (sin navegación adicional):
+
+```
+┌──────────────────────────────────────┐
+│  ✅  ¡Pago exitoso!  (fondo verde)   │
+├──────────────────────────────────────┤
+│ Recibo de compra     #A1B2C3D4       │
+├── · · · · · · · · · · · · · · · ────┤
+│ Vendedor             Mi Negocio      │
+│ Fecha y hora         10/5/26, 2:30PM │
+│ Franja de recogida   10:00 – 10:15   │
+│ Punto de entrega     Edificio C      │
+├── · · · · · · · · · · · · · · · ────┤
+│ Ítems                                │
+│ Arepa con queso × 2      $7.000      │
+│ Jugo de mora × 1         $3.500      │
+├── · · · · · · · · · · · · · · · ────┤
+│ Método de pago       Mi Saldo AERO   │
+│ Estado               Pagado ✓        │
+├── · · · · · · · · · · · · · · · ────┤
+│ Total pagado              $10.500    │
+└──────────────────────────────────────┘
+   [Ver estado del pedido]
+   [Volver al inicio]
+```
+
+Los ítems del recibo se toman de un **snapshot del carrito** guardado antes de limpiar el store de Zustand, garantizando que aparezcan aunque el carrito ya se haya vaciado.
+
+#### Bugs RLS corregidos (bloqueaban el pago)
+
+| Tabla | Problema | Fix |
+|---|---|---|
+| `order_items` | Solo tenía políticas SELECT, no INSERT → error RLS al crear pedido | `CREATE POLICY "order_items: student insert"` con `WITH CHECK` sobre `orders.student_id = auth.uid()` |
+| `payments` | Solo tenía política SELECT → error al insertar registro de pago | `CREATE POLICY "payments: student insert"` con `WITH CHECK (auth.uid() = student_id)` |
+
+#### Bug UX corregido (vendedores no clickeables)
+
+Los vendedores con `is_open = false` tenían `pointer-events-none` en la home — imposible entrar al menú. Se quitó ese atributo: vendedores cerrados ahora son navegables (solo grises para indicar que están cerrados). Los dos vendedores en DB también se abrieron manualmente para pruebas.
+
+---
+
 ### Gestión de Pedidos para el Vendedor — `/vendor/orders`
 
 El módulo completo de pedidos del vendedor fue implementado en esta sesión de trabajo.
