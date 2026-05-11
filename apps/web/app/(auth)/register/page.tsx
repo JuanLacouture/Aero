@@ -65,6 +65,7 @@ export default function RegisterPage() {
 
       window.location.href = '/vendor/dashboard'
     } else {
+      await supabase.from('students').insert({ id: data.user.id, wallet_balance: 0 })
       window.location.href = '/student/home'
     }
   }

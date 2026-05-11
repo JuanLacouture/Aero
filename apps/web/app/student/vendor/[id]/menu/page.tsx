@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useCartStore } from '@/lib/stores/cart'
-import { ArrowLeft, Star, Plus, Minus, ShoppingBag } from 'lucide-react'
+import { ArrowLeft, Star, Plus, Minus, ShoppingBag, Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Vendor = {
@@ -52,6 +52,52 @@ export default function VendorMenuPage() {
   const [carouselIndex, setCarouselIndex] = useState(0)
 
   const { addItem, items, count, total, vendor_id: cartVendor } = useCartStore()
+
+  const [isFav, setIsFav] = useState(false)
+  const [favId, setFavId] = useState<string | null>(null)
+
+  // Carga independiente del estado de favorito
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('favorites')
+        .select('id')
+        .eq('student_id', user.id)
+        .eq('vendor_id', id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) { setIsFav(true); setFavId(data.id) }
+        })
+    })
+  }, [id])
+
+  async function toggleFav() {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    console.log('toggleFav — auth user.id:', user.id, '| vendor id:', id)
+
+    if (isFav && favId) {
+      setIsFav(false)
+      setFavId(null)
+      const { error } = await supabase.from('favorites').delete().eq('id', favId)
+      if (error) { setIsFav(true); setFavId(favId) }
+    } else {
+      setIsFav(true)
+      const { data, error } = await supabase.from('favorites')
+        .insert({ student_id: user.id, vendor_id: id })
+        .select('id')
+        .single()
+      if (error || !data) {
+        setIsFav(false)
+        console.error('toggleFav insert error:', error)
+      } else {
+        setFavId(data.id)
+      }
+    }
+  }
 
   useEffect(() => {
     const supabase = createClient()
@@ -108,6 +154,15 @@ export default function VendorMenuPage() {
           className="absolute top-12 left-4 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow"
         >
           <ArrowLeft size={20} />
+        </button>
+        <button
+          onClick={toggleFav}
+          className="absolute top-12 right-4 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow"
+        >
+          <Heart
+            size={20}
+            className={isFav ? 'fill-error text-error' : 'text-text-secondary'}
+          />
         </button>
       </div>
 

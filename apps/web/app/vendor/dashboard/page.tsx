@@ -43,6 +43,7 @@ export default function VendorDashboardPage() {
 
   useEffect(() => {
     const supabase = createClient()
+    let channel: ReturnType<typeof supabase.channel> | null = null
 
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -68,8 +69,7 @@ export default function VendorDashboardPage() {
       if (ordersRes.data) setOrders(ordersRes.data as unknown as Order[])
       setLoading(false)
 
-      // Realtime: new orders
-      supabase.channel('vendor-orders')
+      channel = supabase.channel('vendor-orders')
         .on('postgres_changes', {
           event: 'INSERT', schema: 'public', table: 'orders',
           filter: `vendor_id=eq.${user.id}`,
@@ -86,6 +86,10 @@ export default function VendorDashboardPage() {
     }
 
     load()
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+    }
   }, [])
 
   async function toggleOpen() {

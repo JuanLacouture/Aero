@@ -1,6 +1,6 @@
 # Avance 1 — Proyecto AERO
 **Conexión Alimentaria Sabana Centro · Universidad de La Sabana · Capstone 2026-1**
-**Fecha de corte:** 10 de mayo de 2026
+**Fecha de corte:** 11 de mayo de 2026
 
 ---
 
@@ -72,7 +72,7 @@ Aero/
 
 ### Seguridad de datos
 - **RLS habilitado en todas las tablas** — los usuarios solo ven y modifican sus propios datos
-- **Trigger `handle_new_user`**: se dispara al crear un usuario en Supabase Auth → crea automáticamente el perfil en `profiles` y la fila en `students` (si es estudiante)
+- **Trigger `handle_new_user`**: se dispara al crear un usuario en Supabase Auth → crea automáticamente el perfil en `profiles`. El flujo de registro de estudiantes también inserta en `students` vía el cliente.
 - **Storage Buckets**: `product-images` (5 MB), `avatars` (2 MB), `covers` (5 MB), `reports` (10 MB, privado)
 - **Políticas de storage**: lectura pública para imágenes, escritura solo para usuarios autenticados, eliminación solo para el dueño del folder
 
@@ -203,6 +203,53 @@ La API valida cada transición — no se puede saltar estados ni retroceder. El 
 #### Confirmación y Tracking ✅
 - `/student/order/[id]/confirmed`: pantalla de éxito con número de pedido
 - `/student/order/[id]/tracking`: consulta estado del pedido en tiempo real
+
+---
+
+## Nuevos Módulos Implementados (11 Mayo 2026)
+
+### Calificaciones
+
+- **API** `POST /api/ratings`: valida con Zod (higiene, puntualidad, calidad 1–5, comentario opcional), verifica que el pedido pertenezca al estudiante y esté en estado `delivered`, bloquea doble calificación con `maybeSingle()`. El trigger `update_vendor_rating` actualiza `vendors.rating_avg` automáticamente.
+- **UI** `/student/order/[id]/rate`: estrellas interactivas por criterio, textarea con contador, pantalla de éxito o "ya calificaste".
+- **Tracking** `/student/order/[id]/tracking`: se agregó CTA "Calificar pedido" que aparece solo cuando el status es `delivered`.
+
+### Wallet del Estudiante
+
+- **API** `POST /api/wallet/topup`: valida monto (mín $1.000, máx $500.000), actualiza `students.wallet_balance`, inserta en `wallet_transactions` con referencia `AERO-TOPUP-{timestamp}`.
+- **UI** `/student/wallet`: header azul con saldo en `font-mono`, chips de recarga rápida ($5k/$10k/$20k/$50k), campo personalizado, historial de transacciones con iconos por tipo.
+
+### Perfil del Estudiante
+
+- **UI** `/student/profile`: avatar con iniciales o foto (sube a bucket `avatars`, comprimido a WebP), edita nombre, carné y teléfono, tarjeta de saldo con enlace a wallet, botón de cerrar sesión.
+
+### Perfil del Vendedor
+
+- **UI** `/vendor/profile`: banner de portada con "Cambiar portada" (bucket `covers`), toggle abierto/cerrado, formulario de negocio (nombre, descripción, horario) y formulario personal independientes, cada uno con su propio estado de guardado.
+
+### Favoritos
+
+- **UI** `/student/favorites`: lista de vendedores favoritos con cover, rating, horario, badge abierto/cerrado, botón para quitar. Estado vacío con CTA a home.
+- **Menú** `/student/vendor/[id]/menu`: se agregó botón de corazón en la portada (UI optimista — cambia color inmediatamente, revierte si falla). Carga el estado del favorito al montar.
+
+### Mapa de Entregas
+
+- **UI** `/student/map`: integración con `@vis.gl/react-google-maps`, marcadores en los 3 puntos del campus, `InfoWindow` al seleccionar, lista de tarjetas con badges de seguridad e iluminación, fallback si no hay API key configurada.
+
+### Reportes Semanales
+
+- **Edge Function** `supabase/functions/weekly-report`: calcula bounds lunes→domingo de la semana anterior, agrega pedidos `delivered` por vendedor (total_orders, total_revenue, daily breakdown, top_product_id por unidades vendidas), hace `upsert` en `weekly_reports`. Desplegada en Supabase.
+- **UI** `/vendor/reports`: selector de semanas horizontal scrollable, tarjetas resumen (pedidos, ingresos, ticket promedio, producto estrella), gráfico de barras diario en CSS puro, tabla de desglose por día, botón "Generar" que invoca la Edge Function.
+
+---
+
+## Bugs Corregidos (11 Mayo 2026)
+
+| # | Bug | Causa | Fix |
+|---|---|---|---|
+| 5 | **Realtime crasheaba al abrir dashboard y pedidos del vendedor** en desarrollo | React StrictMode monta efectos dos veces — el canal Supabase quedaba suscrito y al segundo intento de `.on()` lanzaba error | Se agregó `return () => supabase.removeChannel(channel)` en los `useEffect` de `vendor/dashboard` y `vendor/orders` |
+| 6 | **Favoritos fallaban con error FK 23503** al intentar guardar | El registro del estudiante no creaba fila en `students` — solo en `profiles` vía trigger — y `favorites.student_id` referencia `students(id)` | Se agregó `supabase.from('students').insert(...)` en el flujo de registro de estudiante. Usuarios existentes se corrigen con SQL |
+| 7 | **Corazón de favoritos no cambiaba de color** al tocar | `toggleFav` solo chequeaba `if (data)` ignorando `error` — si el insert fallaba silenciosamente el estado nunca se actualizaba | Se reescribió con UI optimista: cambia color inmediatamente, revierte si la operación falla, loguea el error |
 
 ---
 
@@ -347,80 +394,20 @@ La API rechaza cualquier transición no válida con un error `400` explícito (`
 
 ## Lo que Falta Implementar
 
-### Prioridad Alta (necesario para demo funcional)
+### Para fases futuras
 
-#### 1. Desactivar email confirmation para desarrollo
-- **Dónde:** Supabase Dashboard → Authentication → Providers → Email → toggle "Confirm email" OFF
-- **Por qué:** Sin esto, registrar un vendedor nuevo requiere acceso al correo, lo cual dificulta las pruebas
-- **Nota:** Reactivar en producción
+#### 1. Push Notifications
+- `POST /api/push/subscribe` → 501
+- `POST /api/push/send` → 501
+- Requiere: VAPID keys, service worker en `/public/sw.js`, tabla `push_subscriptions` (no existe aún)
+- Útil para notificar al estudiante cuando su pedido pasa a `ready`
 
-#### 2. Crear productos de prueba (seed data)
-- No hay productos en DB todavía
-- El vendedor `andressangarssj@gmail.com` ya está registrado → puede crear productos desde `/vendor/menu`
-- O insertar seed SQL con 8-10 productos de ejemplo
-
-#### 3. UI completa de pedidos para el vendedor (`/vendor/orders`)
-- La página tiene el Supabase client pero falta la UI
-- Necesita: lista de pedidos activos, botones de cambio de estado (confirmar → preparando → listo), Realtime para notificaciones sin recargar
-
-#### 4. Confirmación de entrega (`/api/orders/[id]/delivered`)
-- Actualmente retorna 501
-- El vendedor necesita marcar el pedido como entregado desde su panel
-
----
-
-### Prioridad Media
-
-#### 5. Sistema de Calificaciones
-- API: `POST /api/ratings` → retorna 501
-- UI: `/student/order/[id]/rate` → solo muestra `<h1>RateOrder</h1>`
-- La tabla `ratings` ya existe con campos: higiene, puntualidad, calidad (promedio auto-calculado)
-- Trigger de actualización del `rating_avg` en `vendors` ya existe (`update_vendor_rating`)
-
-#### 6. Perfil del Vendedor (`/vendor/profile`)
-- Actualmente solo `<h1>VendorProfile</h1>`
-- Necesita: editar nombre del negocio, descripción, horario, imagen de portada
-- Subida de cover image al bucket `covers`
-
-#### 7. Perfil del Estudiante (`/student/profile`)
-- Actualmente solo `<h1>StudentProfile</h1>`
-- Necesita: ver y editar nombre, avatar, carné universitario
-
-#### 8. Wallet del Estudiante (`/student/wallet`)
-- Actualmente solo `<h1>Wallet</h1>`
-- API `POST /api/wallet/topup` → retorna 501
-- La tabla `wallet_transactions` ya existe
-- Necesita: mostrar saldo, historial de movimientos, botón de recarga
-
----
-
-### Prioridad Baja (para fases futuras)
-
-#### 9. Integraciones de Pago Reales
+#### 2. Integraciones de Pago Reales
 - `POST /api/webhooks/kushki` → 501
 - `POST /api/webhooks/nequi` → 501
 - `POST /api/webhooks/daviplata` → 501
-- `POST /api/payments/intent` → parcialmente implementado (falta lógica real)
-- Actualmente todo pedido se "paga" con wallet simulado
-
-#### 10. Push Notifications (FCM)
-- `POST /api/push/subscribe` → 501
-- `POST /api/push/send` → 501
-- Tabla `profiles.fcm_token` ya existe para guardar el token
-
-#### 11. Mapa de Puntos de Entrega (`/student/map`)
-- Actualmente solo `<h1>DeliveryMap</h1>`
-- Los puntos de entrega ya tienen lat/lng en DB (3 puntos configurados)
-- Necesita integración con Google Maps o Leaflet
-
-#### 12. Favoritos (`/student/favorites`)
-- Actualmente solo `<h1>Favorites</h1>`
-- Tabla `favorites` ya existe
-
-#### 13. Reportes del Vendedor (`/vendor/reports`)
-- Actualmente solo `<h1>VendorReports</h1>`
-- Tabla `weekly_reports` ya existe con campos para PDF/CSV URL
-- Requiere lógica de generación de reportes (edge function o cron)
+- `POST /api/payments/intent` → parcialmente implementado
+- Actualmente todo pedido se procesa con pago simulado (funcional para demo)
 
 ---
 
@@ -428,24 +415,25 @@ La API rechaza cualquier transición no válida con un error `400` explícito (`
 
 | Módulo | Estado | Notas |
 |---|---|---|
-| Auth (login/registro) | ✅ Completo | Vendedor requiere desactivar email confirmation para dev |
+| Auth (login/registro) | ✅ Completo | Email confirmation desactivado para dev |
 | Base de datos + RLS | ✅ Completo | 14 tablas, triggers, índices, policies |
 | Storage de imágenes | ✅ Completo | 4 buckets, policies correctas |
-| Dashboard del vendedor | ✅ Completo | Realtime, estadísticas, toggle is_open |
+| Dashboard del vendedor | ✅ Completo | Realtime corregido, estadísticas, toggle is_open |
 | CRUD de productos (vendedor) | ✅ Completo | Con imágenes, validación Zod, compresión |
 | Home del estudiante | ✅ Completo | Lista vendedores abiertos/cerrados |
-| Menú del vendedor (estudiante) | ✅ Completo | Imágenes, carrito, bottom sheet |
+| Menú del vendedor (estudiante) | ✅ Completo | Imágenes, carrito, bottom sheet, favorito |
 | Flujo de pedido (estudiante) | ✅ Completo | Cart → franja → pago simulado |
-| Tracking del pedido | ✅ Completo | Consulta estado en tiempo real |
-| Gestión de pedidos (vendedor) | ✅ Completo | Lista Realtime, máquina de estados, filtros activos/finalizados |
-| Calificaciones | ❌ Pendiente | API 501, UI scaffold |
-| Wallet | ❌ Pendiente | API 501, UI scaffold |
-| Perfil vendedor/estudiante | ❌ Pendiente | Solo scaffold `<h1>` |
-| Pasarelas de pago reales | ❌ Pendiente | Webhooks 501, pago simulado |
-| Push Notifications | ❌ Pendiente | API 501 |
-| Mapa de entregas | ❌ Pendiente | Solo scaffold |
-| Favoritos | ❌ Pendiente | Solo scaffold |
-| Reportes semanales | ❌ Pendiente | Solo scaffold |
+| Tracking del pedido | ✅ Completo | Realtime, CTA de calificación al entregar |
+| Gestión de pedidos (vendedor) | ✅ Completo | Lista Realtime corregida, máquina de estados |
+| Calificaciones | ✅ Completo | API validada con Zod, UI con estrellas interactivas |
+| Wallet | ✅ Completo | Recarga, historial, chips de monto rápido |
+| Perfil estudiante | ✅ Completo | Avatar, datos personales, carné, enlace a wallet |
+| Perfil vendedor | ✅ Completo | Portada, toggle is_open, horario, datos personales |
+| Favoritos | ✅ Completo | UI optimista, lista con remove, corazón en menú |
+| Mapa de entregas | ✅ Completo | Google Maps + lista con seguridad e iluminación |
+| Reportes semanales | ✅ Completo | Edge Function desplegada, UI con gráfico diario |
+| Push Notifications | 🔜 Fase futura | Requiere VAPID keys y service worker |
+| Pasarelas de pago reales | 🔜 Fase futura | Pago simulado funcional para demo |
 
 ---
 
@@ -489,4 +477,4 @@ npm run dev
 
 ---
 
-*Documento generado: 10-Mayo-2026 | Proyecto AERO | Capstone 2026-1*
+*Documento generado: 11-Mayo-2026 | Proyecto AERO | Capstone 2026-1*

@@ -41,6 +41,8 @@ export default function VendorOrdersPage() {
 
   useEffect(() => {
     const supabase = createClient()
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
@@ -54,14 +56,19 @@ export default function VendorOrdersPage() {
       if (data) setOrders(data as unknown as Order[])
       setLoading(false)
 
-      supabase.channel('vendor-orders-page')
+      channel = supabase.channel('vendor-orders-page')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `vendor_id=eq.${user.id}` },
           payload => setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o)))
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: `vendor_id=eq.${user.id}` },
           payload => setOrders(prev => [payload.new as Order, ...prev]))
         .subscribe()
     }
+
     load()
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+    }
   }, [])
 
   async function updateStatus(orderId: string, status: OrderStatus) {

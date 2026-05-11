@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, MapPin, CheckCircle, Clock } from 'lucide-react'
+import { ArrowLeft, MapPin, CheckCircle, Clock, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled'
@@ -175,6 +176,19 @@ export default function OrderTrackingPage() {
             <p className="text-xs text-text-secondary font-body">Punto de recogida</p>
             <p className="font-display font-semibold text-text-primary text-sm">{order.delivery_points.name}</p>
           </div>
+        </div>
+      )}
+
+      {/* CTA calificar — solo cuando entregado */}
+      {isDelivered && (
+        <div className="mx-4 mt-4 mb-6">
+          <Link
+            href={`/student/order/${id}/rate`}
+            className="w-full bg-primary text-white rounded-button py-3.5 font-display font-semibold text-center flex items-center justify-center gap-2"
+          >
+            <Star size={18} className="fill-white" />
+            Calificar pedido
+          </Link>
         </div>
       )}
     </div>
