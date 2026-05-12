@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Eye, EyeOff, Mail, Lock, User, Store, GraduationCap } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, Store, GraduationCap, Camera } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { compressImage } from '@/lib/utils/image-compression'
 
 export default function RegisterPage() {
   const [role, setRole] = useState<'student' | 'vendor'>('student')
@@ -13,9 +14,19 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [businessName, setBusinessName] = useState('')
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [oauthLoading, setOauthLoading] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCoverFile(file)
+    setCoverPreview(URL.createObjectURL(file))
+  }
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -61,6 +72,26 @@ export default function RegisterPage() {
         setError(body.error ?? 'Error al registrar vendedor')
         setLoading(false)
         return
+      }
+
+      if (coverFile) {
+        try {
+          const compressed = await compressImage(coverFile)
+          const path = `${data.user.id}/cover.webp`
+          const supabaseClient = createClient()
+          const { error: uploadError } = await supabaseClient.storage
+            .from('covers')
+            .upload(path, compressed, { upsert: true, contentType: 'image/webp' })
+          if (!uploadError) {
+            const coverUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/covers/${path}?t=${Date.now()}`
+            await supabaseClient
+              .from('vendors')
+              .update({ cover_image_url: coverUrl })
+              .eq('id', data.user.id)
+          }
+        } catch {
+          // Photo upload failure is non-fatal; vendor can add it from profile
+        }
       }
 
       window.location.href = '/vendor/dashboard'
@@ -158,22 +189,60 @@ export default function RegisterPage() {
 
           {/* Business name (vendor only) */}
           {role === 'vendor' && (
-            <div>
-              <label className="text-text-secondary text-xs font-display font-semibold uppercase tracking-wider mb-1.5 block">
-                Nombre del negocio
-              </label>
-              <div className="relative">
-                <Store size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
-                <input
-                  type="text"
-                  value={businessName}
-                  onChange={e => setBusinessName(e.target.value)}
-                  placeholder="Ej: Cafetería El Sabor"
-                  required={role === 'vendor'}
-                  className="w-full pl-10 pr-4 py-3.5 bg-white border border-border rounded-xl text-sm font-body text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-vendor focus:ring-2 focus:ring-vendor/20 transition-all"
-                />
+            <>
+              <div>
+                <label className="text-text-secondary text-xs font-display font-semibold uppercase tracking-wider mb-1.5 block">
+                  Nombre del negocio
+                </label>
+                <div className="relative">
+                  <Store size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
+                  <input
+                    type="text"
+                    value={businessName}
+                    onChange={e => setBusinessName(e.target.value)}
+                    placeholder="Ej: Cafetería El Sabor"
+                    required={role === 'vendor'}
+                    className="w-full pl-10 pr-4 py-3.5 bg-white border border-border rounded-xl text-sm font-body text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-vendor focus:ring-2 focus:ring-vendor/20 transition-all"
+                  />
+                </div>
               </div>
-            </div>
+
+              {/* Cover photo */}
+              <div>
+                <label className="text-text-secondary text-xs font-display font-semibold uppercase tracking-wider mb-1.5 block">
+                  Foto del restaurante <span className="normal-case font-normal">(opcional)</span>
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverChange}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full border-2 border-dashed border-vendor/40 rounded-xl overflow-hidden bg-vendor/5 active:scale-[0.98] transition-all"
+                >
+                  {coverPreview ? (
+                    <div className="relative h-32">
+                      <img src={coverPreview} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                        <span className="text-white text-xs font-display font-semibold flex items-center gap-1">
+                          <Camera size={14} /> Cambiar foto
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-24 flex flex-col items-center justify-center gap-1.5">
+                      <Camera size={24} className="text-vendor/60" />
+                      <span className="text-vendor text-sm font-display font-semibold">Subir foto del restaurante</span>
+                      <span className="text-text-secondary text-xs font-body">JPG, PNG o HEIC</span>
+                    </div>
+                  )}
+                </button>
+              </div>
+            </>
           )}
 
           {/* Email */}

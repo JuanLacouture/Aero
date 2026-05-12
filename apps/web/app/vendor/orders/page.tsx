@@ -1,10 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, X } from 'lucide-react'
+import { ArrowLeft, X, Truck } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+
+const QRScannerModal = dynamic(() => import('@/components/vendor/QRScannerModal'), { ssr: false })
 
 type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled'
 type Order = {
@@ -45,6 +48,9 @@ export default function VendorOrdersPage() {
   const [loading, setLoading] = useState(true)
   const [cancelTarget, setCancelTarget] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [scanningOrderId, setScanningOrderId] = useState<string | null>(null)
+  const [delivering, setDelivering] = useState(false)
+  const [deliverToast, setDeliverToast] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -100,6 +106,23 @@ export default function VendorOrdersPage() {
     }
     setCancelTarget(null)
     setCancelling(false)
+  }
+
+  async function deliverOrder(orderId: string) {
+    setDelivering(true)
+    const res = await fetch(`/api/orders/${orderId}/delivered`, { method: 'PUT' })
+    setDelivering(false)
+    if (res.ok) {
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'delivered' } : o))
+      showToast('✓ Pedido entregado')
+    } else {
+      showToast('Error al marcar como entregado')
+    }
+  }
+
+  function showToast(msg: string) {
+    setDeliverToast(msg)
+    setTimeout(() => setDeliverToast(null), 3000)
   }
 
   const ACTIVE = ['pending', 'confirmed', 'preparing', 'ready']
@@ -169,12 +192,39 @@ export default function VendorOrdersPage() {
                       {NEXT_LABEL[order.status ?? 'pending']}
                     </button>
                   )}
+                  {order.status === 'ready' && (
+                    <button
+                      onClick={() => setScanningOrderId(order.id)}
+                      disabled={delivering}
+                      className="flex items-center gap-1.5 bg-success text-white px-4 py-1.5 rounded-button text-sm font-display font-semibold disabled:opacity-60"
+                    >
+                      <Truck size={14} /> Entregar
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           )
         })}
       </div>
+
+      {/* QR scanner modal */}
+      {scanningOrderId && (
+        <QRScannerModal
+          isOpen={!!scanningOrderId}
+          expectedOrderId={scanningOrderId}
+          onClose={() => setScanningOrderId(null)}
+          onConfirm={() => deliverOrder(scanningOrderId)}
+          onError={msg => showToast(msg)}
+        />
+      )}
+
+      {/* Toast notification */}
+      {deliverToast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-sm font-display font-semibold px-4 py-2.5 rounded-full shadow-lg whitespace-nowrap">
+          {deliverToast}
+        </div>
+      )}
 
       {/* Cancel confirmation modal */}
       {cancelTarget && (

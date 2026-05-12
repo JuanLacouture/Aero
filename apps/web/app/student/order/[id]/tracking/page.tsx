@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import QRCode from 'qrcode'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, MapPin, CheckCircle, Clock, Star } from 'lucide-react'
+import { ArrowLeft, MapPin, CheckCircle, Clock, Star, QrCode } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled'
@@ -43,6 +44,13 @@ export default function OrderTrackingPage() {
   const router = useRouter()
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    QRCode.toDataURL(id, { width: 220, margin: 2, color: { dark: '#1e3a5f', light: '#ffffff' } })
+      .then(setQrDataUrl)
+      .catch(() => {})
+  }, [id])
 
   useEffect(() => {
     const supabase = createClient()
@@ -150,6 +158,26 @@ export default function OrderTrackingPage() {
           )
         })}
       </div>
+
+      {/* QR code — show while order is active (vendor scans to deliver) */}
+      {!isDelivered && !isCancelled && (
+        <div className="mx-4 mt-3 bg-white rounded-card shadow-sm p-4 flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2 self-start">
+            <QrCode size={16} className="text-primary" />
+            <p className="text-xs font-display font-semibold text-text-secondary uppercase tracking-wide">
+              Código de entrega
+            </p>
+          </div>
+          {qrDataUrl ? (
+            <img src={qrDataUrl} alt="QR code" className="w-48 h-48 rounded-xl" />
+          ) : (
+            <div className="w-48 h-48 rounded-xl bg-background animate-pulse" />
+          )}
+          <p className="text-xs font-body text-text-secondary text-center">
+            Muestra este código al vendedor para confirmar la entrega
+          </p>
+        </div>
+      )}
 
       {/* Order details */}
       <div className="mx-4 mt-3 bg-white rounded-card shadow-sm p-4">

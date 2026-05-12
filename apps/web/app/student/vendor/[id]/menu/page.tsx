@@ -55,6 +55,30 @@ export default function VendorMenuPage() {
 
   const [isFav, setIsFav] = useState(false)
   const [favId, setFavId] = useState<string | null>(null)
+  const [unratedOrderId, setUnratedOrderId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('student_id', user.id)
+        .eq('vendor_id', id)
+        .eq('status', 'delivered')
+        .order('created_at', { ascending: false })
+      if (!orders || orders.length === 0) return
+      const orderIds = orders.map(o => o.id)
+      const { data: existingRatings } = await supabase
+        .from('ratings')
+        .select('order_id')
+        .in('order_id', orderIds)
+      const ratedIds = new Set(existingRatings?.map(r => r.order_id) ?? [])
+      const first = orderIds.find(oid => !ratedIds.has(oid))
+      if (first) setUnratedOrderId(first)
+    })
+  }, [id])
 
   // Carga independiente del estado de favorito
   useEffect(() => {
@@ -195,6 +219,22 @@ export default function VendorMenuPage() {
           )}
         </div>
       </div>
+
+      {/* Rate previous order banner */}
+      {unratedOrderId && (
+        <a
+          href={`/student/order/${unratedOrderId}/rate`}
+          className="mx-4 mt-3 flex items-center justify-between gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3"
+        >
+          <div className="flex items-center gap-2">
+            <Star size={16} className="text-yellow-500 fill-yellow-400 shrink-0" />
+            <span className="text-sm font-display font-semibold text-yellow-800">
+              Califica tu pedido anterior aquí
+            </span>
+          </div>
+          <span className="text-yellow-600 text-xs font-body shrink-0">→</span>
+        </a>
+      )}
 
       {/* Products */}
       <div className="px-4 py-5 pb-32">

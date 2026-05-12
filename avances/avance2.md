@@ -1,12 +1,16 @@
 # Avance 2 — Proyecto AERO
 **Conexión Alimentaria Sabana Centro · Universidad de La Sabana · Capstone 2026-1**
-**Fecha de corte:** 12 de mayo de 2026
+**Fecha de corte:** 12 de mayo de 2026 (actualizado misma fecha)
 
 ---
 
 ## ¿Qué cambió en este avance?
 
-Este avance completa la funcionalidad backend pendiente del MVP: wallet real, endpoint de entrega, push notifications VAPID, historial de pedidos del estudiante y cancelación de pedidos desde el panel del vendedor.
+Este avance tiene dos fases:
+
+**Fase 2A** — Funcionalidad backend pendiente del MVP: wallet real, endpoint de entrega, push notifications VAPID, historial de pedidos del estudiante, cancelación de pedidos desde el panel del vendedor.
+
+**Fase 2B** — 8 mejoras UX + corrección de bugs críticos: rediseño de navegación, foto en registro de vendedor, corazones de favoritos en home, flujo de entrega con QR, botón Entregar para vendedor (corrige reportes en cero), buscador eliminado, puntos de entrega correctos, tipos TypeScript regenerados.
 
 ---
 
@@ -14,11 +18,14 @@ Este avance completa la funcionalidad backend pendiente del MVP: wallet real, en
 
 | Archivo | Descripción |
 |---|---|
-| `apps/web/public/sw.js` | Service worker para push notifications (eventos `push` y `notificationclick`) |
-| `apps/web/lib/supabase/admin.ts` | Cliente Supabase con service role key (bypassa RLS para operaciones cross-user) |
-| `apps/web/lib/hooks/usePushSubscription.ts` | Custom hook: solicita permiso, registra SW, suscribe pushManager, envía subscription al API |
-| `apps/web/app/student/orders/page.tsx` | Página de historial de pedidos del estudiante (tabs Activos/Anteriores, botón Calificar) |
-| `apps/web/app/student/orders/` | Directorio de la nueva ruta |
+| `apps/web/public/sw.js` | Service worker para push notifications |
+| `apps/web/lib/supabase/admin.ts` | Cliente Supabase con service role key (bypassa RLS) |
+| `apps/web/lib/hooks/usePushSubscription.ts` | Hook: solicita permiso, registra SW, suscribe pushManager |
+| `apps/web/app/student/orders/page.tsx` | Historial de pedidos del estudiante (tabs Activos/Anteriores) |
+| `apps/web/components/shared/ActiveOrderBubble.tsx` | Burbuja flotante de pedido activo (solo visible cuando hay pedido en curso) |
+| `apps/web/components/shared/PushSubscriptionInit.tsx` | Client boundary para inicializar push desde layout server component |
+| `apps/web/components/student/VendorCardList.tsx` | Cards de vendedor con corazones de favoritos (client component) |
+| `apps/web/components/vendor/QRScannerModal.tsx` | Modal con cámara para escanear QR del estudiante al entregar |
 
 ---
 
@@ -28,167 +35,145 @@ Este avance completa la funcionalidad backend pendiente del MVP: wallet real, en
 
 #### [`app/api/orders/route.ts`](../apps/web/app/api/orders/route.ts)
 
-**Problema anterior:** El pago con wallet era 100% simulado — nunca tocaba `wallet_balance` ni creaba `wallet_transactions`. El `payment_method` estaba hardcodeado a `'wallet'` sin importar qué elegía el usuario.
+**Problema anterior:** Pago con wallet 100% simulado. `payment_method` hardcodeado.
 
 **Cambios:**
-- Acepta `payment_method` en el body (default `'wallet'` si no se envía)
-- Si `payment_method === 'wallet'`: verifica `students.wallet_balance >= total` **antes** de crear el pedido → retorna 402 con mensaje legible si es insuficiente
-- Descuenta `wallet_balance` en `students` al crear el pedido
-- Inserta registro en `wallet_transactions` (type: `purchase`, `balance_after`, `reference: ORDER-{id}`)
-- Para QR / Nequi / Daviplata: mantiene el pago simulado existente
-
-```typescript
-// Verificación de saldo (nueva lógica)
-if (payment_method === 'wallet') {
-  const { data: student } = await supabase.from('students')
-    .select('wallet_balance').eq('id', user.id).single()
-
-  if (!student || student.wallet_balance < total) {
-    return NextResponse.json(
-      { error: `Saldo insuficiente. Disponible: $${...}` },
-      { status: 402 }
-    )
-  }
-}
-```
+- Acepta `payment_method` del body
+- Wallet: verifica saldo antes de crear pedido → 402 si insuficiente
+- Descuenta `wallet_balance` y crea `wallet_transactions`
+- QR/Nequi/Daviplata: mantiene simulación existente
 
 ---
 
 #### [`app/api/orders/[id]/delivered/route.ts`](../apps/web/app/api/orders/%5Bid%5D/delivered/route.ts)
 
-**Problema anterior:** Retornaba 501 (Not Implemented).
+**Problema anterior:** Retornaba 501. **Nunca se llamaba desde UI** → causa raíz de reportes en cero.
 
-**Implementación completa:**
-- Verifica autenticación
-- Fetch del pedido con `id, status, vendor_id, student_id, total_amount, payment_method, payment_status`
-- Valida que el usuario autenticado sea el `vendor_id`
-- Valida que `status === 'ready'` (única transición válida hacia `delivered`)
-- Actualiza `status → delivered`
-- **Safety net wallet**: si `payment_method === 'wallet'` y `payment_status !== 'paid'` (caso de pedidos creados antes de FASE 1.2), descuenta el saldo y crea `wallet_transaction`
+**Ahora:** Verifica vendor, valida `status === 'ready'`, actualiza a `delivered`, safety net wallet.
 
 ---
 
 #### [`app/api/orders/[id]/status/route.ts`](../apps/web/app/api/orders/%5Bid%5D/status/route.ts)
 
-**Cambio:** Se agrega `student_id` al SELECT del pedido. Cuando `newStatus === 'ready'`, hace un fetch fire-and-forget a `/api/push/send` para notificar al estudiante. No bloquea la respuesta al vendedor si falla.
-
-```typescript
-if (newStatus === 'ready' && order.student_id) {
-  fetch(`${appUrl}/api/push/send`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      user_id: order.student_id,
-      title: '¡Tu pedido está listo! 🎉',
-      body: 'Ya puedes recoger tu pedido en el punto de entrega.',
-      url: `/student/order/${id}/tracking`,
-    }),
-  }).catch(() => {/* non-blocking */})
-}
-```
+Agrega `student_id` al SELECT. Fire-and-forget push cuando `newStatus === 'ready'`.
 
 ---
 
-#### [`app/api/push/subscribe/route.ts`](../apps/web/app/api/push/subscribe/route.ts)
+#### [`app/api/push/subscribe/route.ts`](../apps/web/app/api/push/subscribe/route.ts) · [`app/api/push/send/route.ts`](../apps/web/app/api/push/send/route.ts)
 
-**Problema anterior:** Retornaba 501.
-
-**Implementación:**
-- `POST` con body `{ subscription }` (objeto `PushSubscription` serializado del browser)
-- Verifica autenticación
-- Guarda `JSON.stringify(subscription)` en `profiles.fcm_token`
-- Retorna 200
+Implementados (antes 501). Subscribe guarda en `profiles.fcm_token`. Send usa admin client + `webpush.sendNotification()`.
 
 ---
 
-#### [`app/api/push/send/route.ts`](../apps/web/app/api/push/send/route.ts)
-
-**Problema anterior:** Retornaba 501.
-
-**Implementación:**
-- `POST` con body `{ user_id, title, body, url? }`
-- Usa `createAdminClient()` (service role) para leer `profiles.fcm_token` sin restricción RLS
-- Si no hay token: retorna 200 con `{ skipped: true }` (no-op silencioso)
-- Parsea el JSON del token como `PushSubscription`
-- Llama `webpush.sendNotification()` con VAPID keys
-- Si la suscripción está expirada o inválida: limpia `fcm_token` silenciosamente
-
----
-
-### Frontend (UI)
+### Frontend (UI) — Fase 2A
 
 #### [`app/student/order/new/page.tsx`](../apps/web/app/student/order/new/page.tsx)
 
-**Cambios:**
-1. Agrega estado `walletBalance: number | null`
-2. Nuevo `useEffect` que se activa al entrar al paso `payment` — fetch del saldo real desde `students.wallet_balance`
-3. El `submitOrder()` ahora incluye `payment_method` en el body del POST
-4. Widget de Saldo AERO muestra saldo real (con spinner mientras carga) en lugar del valor hardcodeado `$50.000`
-5. Muestra el saldo en verde si alcanza o rojo si es insuficiente
-6. Muestra advertencia visible "Saldo insuficiente — recarga tu cartera" si no alcanza
-
----
+Muestra saldo real en paso de pago, incluye `payment_method` en POST, advertencia roja si insuficiente.
 
 #### [`app/student/orders/page.tsx`](../apps/web/app/student/orders/page.tsx) *(nuevo)*
 
-Página de historial de pedidos del estudiante.
-
-**Funcionalidades:**
-- Fetch de `orders` del estudiante con join a `vendors(business_name)`, `order_items(quantity, unit_price, products(name))` y `ratings(id)`
-- Dos tabs: **Activos** (pending, confirmed, preparing, ready) / **Anteriores** (delivered, cancelled)
-- Cada tarjeta muestra: nombre del vendedor, ID corto, fecha, resumen de ítems, total en COP, badge de estado con color
-- Click en tarjeta → navega a `/student/order/[id]/tracking`
-- Botón **"Calificar"** visible solo si `status === 'delivered'` y no tiene rating (evita doble calificación)
-- Estado vacío con CTA diferenciado para Activos vs Anteriores
-
----
-
-#### [`components/shared/StudentBottomNav.tsx`](../apps/web/components/shared/StudentBottomNav.tsx)
-
-**Cambio:** Reemplaza el ícono de Favoritos por "Mis pedidos" (`ClipboardList`) apuntando a `/student/orders`.
-
-> **Nota:** El ícono de favoritos se eliminó del navbar inferior para dar espacio. Los favoritos siguen accesibles desde el menú del vendedor (corazón en portada) y desde el perfil del estudiante.
-
----
-
-#### [`app/student/layout.tsx`](../apps/web/app/student/layout.tsx)
-
-**Cambio:** Convierte el layout a `'use client'`. Agrega componente interno `PushInit` que llama `usePushSubscription()` al montar, disparando el flujo de solicitud de permiso de notificaciones.
-
----
+Historial de pedidos con tabs Activos / Anteriores. Click → tracking. Botón "Calificar" en delivered sin rating.
 
 #### [`app/vendor/orders/page.tsx`](../apps/web/app/vendor/orders/page.tsx)
 
-**Cambio:** Agrega botón "Cancelar" (rojo con ícono X) en tarjetas con `status === 'pending'` o `'confirmed'`. Al hacer clic muestra modal de confirmación con dos opciones: **Mantener** / **Sí, cancelar**. La cancelación llama `PUT /api/orders/[id]/status` con `{ status: 'cancelled' }` y actualiza el estado local optimísticamente.
+Agrega botón "Cancelar" (rojo) para `pending`/`confirmed` con modal de confirmación.
 
 ---
 
-### Infraestructura y Configuración
+### Frontend (UI) — Fase 2B
 
-#### [`apps/web/.env.local`](../apps/web/.env.local)
+#### [`components/shared/StudentBottomNav.tsx`](../apps/web/components/shared/StudentBottomNav.tsx)
 
-Agrega las nuevas variables de entorno:
+**Antes:** ShoppingBag ("Pedido") como segundo tab.
+**Ahora:** Heart ("Favoritos") → `/student/favorites`. Tab de pedido eliminado — reemplazado por `ActiveOrderBubble`.
+
+#### [`components/shared/ActiveOrderBubble.tsx`](../apps/web/components/shared/ActiveOrderBubble.tsx) *(nuevo)*
+
+Burbuja flotante `fixed bottom-20` que solo aparece cuando el estudiante tiene un pedido activo. Verde cuando está `ready`, azul en otros estados. Realtime via Supabase channel. Link a `/student/order/{id}/tracking`.
+
+#### [`app/student/layout.tsx`](../apps/web/app/student/layout.tsx)
+
+Server Component. Importa `PushSubscriptionInit` y `ActiveOrderBubble` como client boundaries.
+
+#### [`app/student/home/page.tsx`](../apps/web/app/student/home/page.tsx)
+
+- **Buscador eliminado** (era decorativo, no funcional)
+- Cards de vendedor reemplazadas por `<VendorCardList>` (client component con corazones)
+
+#### [`components/student/VendorCardList.tsx`](../apps/web/components/student/VendorCardList.tsx) *(nuevo)*
+
+Client component. Carga favoritos del usuario en mount. Cada card tiene botón Heart que inserta/elimina de tabla `favorites` con optimistic update. Badge Abierto/Cerrado movido a top-left para no solapar el corazón.
+
+#### [`app/student/order/[id]/tracking/page.tsx`](../apps/web/app/student/order/%5Bid%5D/tracking/page.tsx)
+
+Agrega sección **Código de entrega** con QR generado con `qrcode` (encodes order UUID). Visible mientras el pedido está activo (pending → ready). El vendedor escanea este QR para confirmar entrega.
+
+#### [`app/vendor/orders/page.tsx`](../apps/web/app/vendor/orders/page.tsx)
+
+- Botón **"Entregar"** (verde, ícono Truck) para pedidos en `ready`
+- Abre `QRScannerModal` (dynamic import `ssr:false`)
+- Verifica que el QR escaneado coincida con el ID del pedido
+- Llama `PUT /api/orders/{id}/delivered` → pedido pasa a `delivered`
+- Toast de confirmación/error
+- Fallback manual: ingresar código si la cámara no está disponible
+
+#### [`app/(auth)/register/page.tsx`](../apps/web/app/%28auth%29/register/page.tsx)
+
+Agrega campo de foto opcional en sección de vendedor. Muestra preview. Después del registro, comprime con `compressImage()` y sube a bucket `covers/{userId}/cover.webp`. Actualiza `vendors.cover_image_url`.
+
+#### [`app/student/vendor/[id]/menu/page.tsx`](../apps/web/app/student/vendor/%5Bid%5D/menu/page.tsx)
+
+Banner amarillo "Calificar pedido anterior →" visible si el estudiante tiene pedidos `delivered` sin calificar de ese vendedor. Link a `/student/order/{orderId}/rate`.
+
+---
+
+### Base de Datos
+
+#### Migración `update_delivery_points_names` (ejecutada en Supabase)
+
+Renombra los 3 puntos de entrega existentes por ID (preserva FK refs a `time_slots` y `orders`):
+
+| Antes | Ahora |
+|---|---|
+| Entrada Principal | Puente de la Clínica |
+| Bloque H | Puente de Ad Portas |
+| Cafetería Central | Entrada peatonal del CA |
+
+---
+
+### Tipos TypeScript
+
+#### [`apps/web/types/database.ts`](../apps/web/types/database.ts)
+
+**Regenerados desde Supabase** via MCP `generate_typescript_types`. Antes: solo `Json` type → todas las queries Supabase retornaban `never`. Ahora: tipos completos para las 14 tablas + enums + relaciones. Elimina ~80 errores `TS2339` / `TS2345` del compilador.
+
+---
+
+### Dependencias Nuevas
+
 ```bash
-SUPABASE_SERVICE_ROLE_KEY=   # pendiente — ver abajo
-NEXT_PUBLIC_VAPID_PUBLIC_KEY=BMfd7009ApEj_FuCQtCyLK3FS874oLkRPjwkh75Wv9T5slKEIL6pTWnBchpKVxoJtTTDV5NlfAKVEx1I0UllwKQ
-VAPID_PRIVATE_KEY=y2pdovYttOisOtDgm9lHyQxJAgmOJaCmAJdBgiiAXYE
-VAPID_SUBJECT=mailto:aero@unisabana.edu.co
+# apps/web
+qrcode          # Genera QR code como data URL (client-side)
+@types/qrcode   # Tipos TypeScript para qrcode
+html5-qrcode    # Escanea QR con cámara del dispositivo (vendor)
 ```
 
-#### [`.env.example`](../.env.example)
-
-Documentadas las nuevas variables con instrucción para generar VAPID keys y `SUPABASE_SERVICE_ROLE_KEY`.
-
 ---
 
-## Bugs Corregidos (12 Mayo 2026)
+## Bugs Corregidos (Fase 2A — 12 Mayo 2026)
 
 | # | Bug | Causa | Fix |
 |---|---|---|---|
-| 8 | `next` unused variable en `callback/route.ts` | Variable asignada desde `searchParams` pero nunca consumida | Eliminada la línea |
-| 9 | `let productNames` en `vendor/reports/page.tsx` | Variable declarada con `let` pero nunca reasignada (solo mutación de propiedades) | Cambiado a `const` |
+| 8 | `next` unused variable en `callback/route.ts` | Variable nunca consumida | Eliminada |
+| 9 | `let productNames` en `vendor/reports/page.tsx` | `let` nunca reasignado | Cambiado a `const` |
 
-Ambos eran errores de ESLint que bloqueaban el build de producción.
+## Bugs Corregidos (Fase 2B — 12 Mayo 2026)
+
+| # | Bug | Causa | Fix |
+|---|---|---|---|
+| 10 | Reportes siempre en cero | `weekly-report` solo cuenta `delivered`, pero ningún botón en UI llamaba el endpoint `/delivered` | Botón "Entregar" + QR flow completan la máquina de estados |
+| 11 | `'use client'` en layout rompía webpack | Layout `student/layout.tsx` marcado como client component causaba que chunks `main-app.js` no se generaran | Revertido a Server Component, client code en boundaries separados |
 
 ---
 
@@ -196,14 +181,11 @@ Ambos eran errores de ESLint que bloqueaban el build de producción.
 
 ```
 ✓ Compiled successfully
-✓ Linting passed (solo warnings pre-existentes de <img> — no errores)
+✓ Linting passed (solo warnings pre-existentes de <img>)
 ✓ 35 páginas generadas
 ✓ Todas las API routes activas
+✓ tipos/database.ts regenerado — ~80 errores TS eliminados
 ```
-
-**Warnings pre-existentes** (no son errores, no bloquean build):
-- `<img>` sin `<Image />` de Next.js en varias páginas de imágenes de productos — mejora de performance futura
-- `useEffect` missing dependency `selectedPoint` en `order/new` — pre-existente, no introduce bugs
 
 ---
 
@@ -211,43 +193,29 @@ Ambos eran errores de ESLint que bloqueaban el build de producción.
 
 ### 🔴 Crítico para funcionamiento completo
 
-#### 1. `SUPABASE_SERVICE_ROLE_KEY` (acción manual requerida)
+#### 1. `SUPABASE_SERVICE_ROLE_KEY`
 
-**Impacto:** Sin esta key, el endpoint `POST /api/push/send` usa el anon client que tiene RLS — no puede leer `profiles.fcm_token` de otros usuarios.
+Sin esta key, push notifications cross-user no funcionan.
 
 **Pasos:**
-1. Ir a [supabase.com/dashboard](https://supabase.com/dashboard) → proyecto `vtngzjobuhqjnckuyrsx`
-2. **Settings → API → Project API keys**
-3. Copiar el valor de **service_role** (secret)
-4. Pegarlo en `apps/web/.env.local`:
+1. Supabase Dashboard → proyecto `vtngzjobuhqjnckuyrsx`
+2. Settings → API → Project API keys → copiar `service_role`
+3. Pegar en `apps/web/.env.local`:
    ```bash
    SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
    ```
 
-> ⚠️ Nunca commitear esta key. Está en `.gitignore` via `.env.local`.
+#### 2. OAuth Google (config externa)
 
-#### 2. OAuth Google (acción manual requerida)
+1. [console.cloud.google.com](https://console.cloud.google.com) → Credentials → OAuth 2.0 Client ID
+2. Redirect URI: `https://vtngzjobuhqjnckuyrsx.supabase.co/auth/v1/callback`
+3. Supabase Dashboard → Auth → Providers → Google → pegar Client ID + Secret
 
-Los botones ya existen en `login/page.tsx`. Solo falta configuración externa:
+#### 3. OAuth Microsoft/Azure (config externa)
 
-1. [console.cloud.google.com](https://console.cloud.google.com) → proyecto `AERO`
-2. **APIs & Services → Credentials → OAuth 2.0 Client ID** (Web)
-3. Authorized redirect URI: `https://vtngzjobuhqjnckuyrsx.supabase.co/auth/v1/callback`
-4. Copiar Client ID + Secret → **Supabase Dashboard → Auth → Providers → Google**
-5. **APIs & Services → Library** → habilitar **Maps JavaScript API**
-6. Crear API Key → agregar a `.env.local`:
-   ```bash
-   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<key>
-   ```
-
-#### 3. OAuth Microsoft/Azure (acción manual requerida)
-
-1. [portal.azure.com](https://portal.azure.com) → **App registrations → New registration**
-2. Nombre: `AERO` | Accounts: Any organizational directory + personal accounts
-3. Redirect URI: `https://vtngzjobuhqjnckuyrsx.supabase.co/auth/v1/callback`
-4. **Certificates & secrets → New client secret** (guardar el Value)
-5. **API permissions**: `email`, `openid`, `profile`, `User.Read`
-6. **Supabase Dashboard → Auth → Providers → Azure** → pegar Application ID + Client Secret
+1. [portal.azure.com](https://portal.azure.com) → App registrations → New
+2. Redirect URI: `https://vtngzjobuhqjnckuyrsx.supabase.co/auth/v1/callback`
+3. Supabase Dashboard → Auth → Providers → Azure → pegar App ID + Secret
 
 ---
 
@@ -255,93 +223,91 @@ Los botones ya existen en `login/page.tsx`. Solo falta configuración externa:
 
 | Funcionalidad | Descripción | Prioridad |
 |---|---|---|
-| Regenerar tipos TypeScript | `npx supabase gen types typescript --project-id vtngzjobuhqjnckuyrsx > types/database.ts` | Alta |
-| Favoritos en navbar | Se quitó el ícono del navbar para dar espacio — evaluar si agregar en perfil o como tab | Media |
-| Refund en cancelación | Si se cancela un pedido pagado con wallet, debería reembolsar `wallet_balance` | Media |
-| Validación saldo en UI | Deshabilitar botón "Pagar" si `paymentMethod === 'wallet'` y `walletBalance < total` | Baja |
-| Notificación a estudiante al cancelar | Push notification cuando el vendedor cancela un pedido | Baja |
+| Reembolso en cancelación | Si se cancela pedido wallet-paid → reembolsar `wallet_balance` + `wallet_transaction` tipo `refund` | Alta |
+| Push al cancelar | Notificación al estudiante cuando el vendedor cancela | Media |
+| Deshabilitar "Pagar" si saldo insuficiente | UI proactiva antes del 402 | Baja |
+| Time slots para nuevas fechas | `generate_day_slots` debe correr periódicamente o en demanda | Media |
 
 ---
 
-### 🟢 Frontend Polish (próxima sesión dedicada)
+### 🟢 Frontend Polish
 
 | Mejora | Dónde |
 |---|---|
-| Imagen de portada + fallback gradiente en tarjetas vendor | `student/home` |
-| Animaciones de entrada (Framer Motion stagger) | `student/home`, `vendor/menu` |
 | Skeleton loaders en lugar de spinners | Todas las páginas con fetch |
-| Empty states ilustrados (SVG + CTA) | Pedidos, favoritos, wallet |
-| Modal de confirmación al eliminar producto | `vendor/menu` |
-| Mejorar UI historial pedidos vendedor | `/vendor/orders` tab Finalizados |
-| Dark mode con Tailwind `dark:` classes | Global |
-| PWA manifest + iconos para instalación | `public/manifest.json`, `public/icon-192.png` |
-| Búsqueda/filtro de vendors en home | `student/home` |
-| Micro-animaciones y hover effects | Global |
 | Reemplazar `<img>` por `<Image />` de Next.js | Todas las páginas con imágenes |
+| Animaciones Framer Motion stagger | `student/home`, `vendor/menu` |
+| Empty states ilustrados | Pedidos, favoritos, wallet |
+| Dark mode | Global con Tailwind `dark:` |
+| PWA manifest + iconos | `public/manifest.json` |
+| Micro-animaciones hover | Global |
 
 ---
 
-## Resumen de Estado por Módulo (Actualizado)
+## Resumen de Estado por Módulo (Actualizado 12 Mayo 2026)
 
 | Módulo | Estado | Notas |
 |---|---|---|
-| Auth (login/registro) | ✅ Completo | Email + OAuth con botones listos |
+| Auth (login/registro) | ✅ Completo | Email + foto opcional para vendedores |
 | OAuth Google | ⚙️ Config pendiente | Código listo, falta Google Cloud Console |
 | OAuth Microsoft | ⚙️ Config pendiente | Código listo, falta Azure Portal |
-| Base de datos + RLS | ✅ Completo | 14 tablas, triggers, índices, policies |
-| Storage de imágenes | ✅ Completo | 4 buckets, policies correctas |
+| Base de datos + RLS | ✅ Completo | 14 tablas, tipos TS regenerados |
+| Storage de imágenes | ✅ Completo | 4 buckets, foto subible desde registro |
 | Dashboard del vendedor | ✅ Completo | Realtime, estadísticas, toggle is_open |
-| CRUD de productos (vendedor) | ✅ Completo | Con imágenes, validación Zod, compresión |
-| Home del estudiante | ✅ Completo | Lista vendedores abiertos/cerrados |
-| Menú del vendedor (estudiante) | ✅ Completo | Imágenes, carrito, bottom sheet, favorito |
-| Flujo de pedido + pago wallet | ✅ Completo | Saldo real, deducción real, 402 si insuficiente |
-| Flujo de pedido + otros métodos | ✅ Demo | QR/Nequi/Daviplata siguen simulados |
-| Tracking del pedido | ✅ Completo | Realtime, CTA de calificación al entregar |
-| Marcar pedido entregado | ✅ Completo | Endpoint `/delivered` implementado |
-| Gestión de pedidos (vendedor) | ✅ Completo | Realtime, máquina de estados, botón cancelar |
-| Cancelar pedido (vendedor) | ✅ Completo | Modal de confirmación, pending + confirmed |
-| Historial de pedidos (estudiante) | ✅ Completo | Tabs, tarjetas, botón calificar |
-| Calificaciones | ✅ Completo | API + UI con estrellas |
-| Wallet | ✅ Completo | Recarga, historial, deducción real en pedidos |
-| Perfil estudiante | ✅ Completo | Avatar, datos, carné, enlace wallet |
-| Perfil vendedor | ✅ Completo | Portada, toggle, horario |
-| Favoritos | ✅ Completo | UI optimista, lista, corazón en menú |
-| Mapa de entregas | ✅ Completo | Google Maps + lista (requiere API key) |
-| Reportes semanales | ✅ Completo | Edge Function + UI con gráfico |
+| CRUD de productos (vendedor) | ✅ Completo | Con imágenes, validación Zod |
+| Home del estudiante | ✅ Completo | Cards con corazones, sin buscador falso |
+| Favoritos | ✅ Completo | Corazón en home + menú vendedor + página `/student/favorites` accesible desde nav |
+| Menú del vendedor (estudiante) | ✅ Completo | Rating CTA si tiene pedido sin calificar |
+| Flujo de pedido + wallet | ✅ Completo | Saldo real, deducción real, 402 si insuficiente |
+| Flujo de pedido + otros métodos | ✅ Demo | QR/Nequi/Daviplata simulados |
+| Puntos de entrega | ✅ Completo | 3 puntos correctos: Clínica, Ad Portas, CA |
+| Tracking del pedido | ✅ Completo | Realtime + QR code visible para mostrar al vendedor |
+| Entrega con QR | ✅ Completo | Vendedor escanea QR → pedido pasa a `delivered` |
+| Marcar pedido entregado | ✅ Completo | Endpoint + UI botón "Entregar" en panel vendedor |
+| Gestión de pedidos (vendedor) | ✅ Completo | Realtime, estados, cancelar, entregar con QR |
+| Historial de pedidos (estudiante) | ✅ Completo | Tabs, tarjetas, tracking, botón calificar |
+| Calificaciones | ✅ Completo | API + UI 3 dimensiones + CTA en menú vendedor |
+| Wallet | ✅ Completo | Recarga, historial, deducción real |
+| Perfil estudiante | ✅ Completo | Avatar, datos, carné |
+| Perfil vendedor | ✅ Completo | Portada (actualizable en registro y perfil), toggle, horario |
+| Navegación estudiante | ✅ Completo | 4 tabs + burbuja flotante de pedido activo |
+| Reportes semanales | ✅ Completo | Bug corregido: orders ahora llegan a `delivered` |
 | Push Notifications (VAPID) | ✅ Implementado | Falta `SUPABASE_SERVICE_ROLE_KEY` en env |
-| Pasarelas de pago reales | 🔜 Fuera de alcance | Sin RUT real — stubs 501 aceptados para demo |
+| Tipos TypeScript | ✅ Completo | Regenerados via MCP Supabase |
+| Pasarelas de pago reales | 🔜 Fuera de alcance | Stubs aceptados para demo |
 
 ---
 
-## Cómo Probar las Nuevas Funcionalidades
+## Cómo Probar las Nuevas Funcionalidades (Fase 2B)
 
-### Wallet real
-1. Iniciar sesión como estudiante
-2. Ir a `/student/wallet` → verificar saldo actual
-3. Crear pedido → paso de pago → seleccionar "Mi Saldo AERO" → debe mostrar saldo real
-4. Si saldo < total: debe mostrar warning rojo y retornar 402 al intentar pagar
-5. Confirmar pedido → revisar en `/student/wallet` que el saldo disminuyó
+### Flujo completo de entrega con QR
+1. Estudiante hace pedido → llega al tracking → ver QR en pantalla
+2. Vendedor en `/vendor/orders` → pedido pasa por estados hasta `Listo para recoger`
+3. Vendedor toca **"Entregar"** → abre cámara → escanea QR del estudiante
+4. Pedido pasa a `delivered` → toast de confirmación
+5. Estudiante ve botón "Calificar" en historial y en menú del restaurante
 
-### Historial de pedidos
-1. Iniciar sesión como estudiante con pedidos previos
-2. Ir a `/student/orders` (ícono ClipboardList en navbar)
-3. Tab "Activos": pedidos en curso · Tab "Anteriores": delivered + cancelled
-4. Click en pedido → debe navegar a tracking
-5. Pedido `delivered` sin calificación → debe mostrar botón "Calificar"
+### Favoritos en home
+1. Ir a `/student/home` → cada card de vendedor tiene corazón top-right
+2. Tocar corazón → rojo = guardado en favoritos
+3. Nav → Favoritos (Heart tab) → ver lista en `/student/favorites`
 
-### Cancelar pedido (vendedor)
-1. Iniciar sesión como vendedor con pedido en `pending` o `confirmed`
-2. Ir a `/vendor/orders`
-3. Tarjetas activas deben mostrar botón rojo "Cancelar" junto al avance de estado
-4. Click → modal de confirmación
-5. Confirmar → pedido pasa a `cancelled` y aparece en tab "Finalizados"
+### Burbuja de pedido activo
+1. Hacer pedido → aparece burbuja azul sobre el nav
+2. Vendedor marca "Listo para recoger" → burbuja cambia a verde + texto "¡Tu pedido está listo!"
+3. Pedido entregado → burbuja desaparece
 
-### Push Notifications
-1. Iniciar sesión como estudiante
-2. Browser debe pedir permiso de notificaciones al cargar cualquier ruta `/student/*`
-3. Como vendedor, marcar un pedido como "Listo para recoger"
-4. Si el estudiante tiene permiso y `SUPABASE_SERVICE_ROLE_KEY` configurado → debe recibir push notification
+### Foto en registro de vendedor
+1. Ir a `/register` → seleccionar rol Vendedor
+2. Llenar nombre + negocio → campo de foto opcional aparece
+3. Seleccionar imagen → preview visible
+4. Registrarse → foto aparece en dashboard del vendedor
+
+### Reportes (fix)
+1. Entregar un pedido via QR flow (arriba)
+2. Ir a `/vendor/reports` → "Generar"
+3. Reporte debe mostrar pedidos y revenue reales (ya no cero)
 
 ---
 
-*Documento generado: 12-Mayo-2026 | Proyecto AERO | Capstone 2026-1*
+*Documento actualizado: 12-Mayo-2026 | Proyecto AERO | Capstone 2026-1*

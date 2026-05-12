@@ -1,11 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
-import { Search, Star, ChevronRight } from 'lucide-react'
-
-function formatSchedule(start: string | null, end: string | null) {
-  if (!start || !end) return null
-  return `${start.slice(0, 5)} – ${end.slice(0, 5)}`
-}
+import VendorCardList from '@/components/student/VendorCardList'
 
 export default async function StudentHomePage() {
   const supabase = await createClient()
@@ -39,10 +33,6 @@ export default async function StudentHomePage() {
             ? `${openVendors.length} vendedor${openVendors.length > 1 ? 'es' : ''} disponible${openVendors.length > 1 ? 's' : ''} ahora`
             : 'No hay vendedores activos en este momento'}
         </p>
-        <div className="mt-4 flex items-center bg-white rounded-xl px-3 py-2.5 gap-2">
-          <Search size={17} className="text-text-secondary shrink-0" />
-          <span className="text-text-secondary text-sm font-body">Buscar vendedor o plato...</span>
-        </div>
       </div>
 
       {/* Content */}
@@ -52,9 +42,7 @@ export default async function StudentHomePage() {
             <h2 className="text-base font-display font-bold text-text-primary mb-3">
               Vendedores activos ahora
             </h2>
-            <div className="flex flex-col gap-3">
-              {openVendors.map(v => <VendorCard key={v.id} vendor={v} />)}
-            </div>
+            <VendorCardList vendors={openVendors} />
           </>
         )}
 
@@ -63,9 +51,7 @@ export default async function StudentHomePage() {
             <h2 className="text-base font-display font-bold text-text-primary mb-3">
               Próximamente disponibles
             </h2>
-            <div className="flex flex-col gap-3 opacity-60">
-              {closedVendors.map(v => <VendorCard key={v.id} vendor={v} />)}
-            </div>
+            <VendorCardList vendors={closedVendors} dimmed />
           </div>
         )}
 
@@ -78,65 +64,5 @@ export default async function StudentHomePage() {
         )}
       </div>
     </div>
-  )
-}
-
-type VendorRow = {
-  id: string
-  business_name: string
-  description: string | null
-  cover_image_url: string | null
-  rating_avg: number | null
-  rating_count: number | null
-  is_open: boolean | null
-  schedule_start: string | null
-  schedule_end: string | null
-}
-
-function VendorCard({ vendor }: { vendor: VendorRow }) {
-  const schedule = formatSchedule(vendor.schedule_start, vendor.schedule_end)
-
-  return (
-    <Link href={`/student/vendor/${vendor.id}/menu`}>
-      <div className="bg-white rounded-card shadow-sm overflow-hidden active:scale-[0.98] transition-transform cursor-pointer">
-        <div className="h-36 bg-primary-light relative">
-          {vendor.cover_image_url ? (
-            <img src={vendor.cover_image_url} alt={vendor.business_name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary/10">
-              <span className="text-4xl opacity-60">🍽️</span>
-            </div>
-          )}
-          <span className={`absolute top-2 right-2 text-xs font-display font-semibold px-2 py-0.5 rounded-full ${
-            vendor.is_open ? 'bg-success text-white' : 'bg-gray-500/80 text-white'
-          }`}>
-            {vendor.is_open ? 'Abierto' : 'Cerrado'}
-          </span>
-        </div>
-        <div className="p-3 flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-display font-bold text-text-primary text-base leading-tight truncate">
-              {vendor.business_name}
-            </h3>
-            {vendor.description && (
-              <p className="text-text-secondary text-xs font-body mt-0.5 line-clamp-1">{vendor.description}</p>
-            )}
-            <div className="flex items-center gap-2 mt-1.5">
-              <div className="flex items-center gap-0.5">
-                <Star size={12} className="text-yellow-400 fill-yellow-400" />
-                <span className="text-sm font-display font-semibold text-text-primary">
-                  {vendor.rating_avg?.toFixed(1) ?? '—'}
-                </span>
-                {vendor.rating_count != null && (
-                  <span className="text-xs text-text-secondary">({vendor.rating_count})</span>
-                )}
-              </div>
-              {schedule && <span className="text-xs text-text-secondary">{schedule}</span>}
-            </div>
-          </div>
-          <ChevronRight size={18} className="text-text-secondary mt-0.5 shrink-0" />
-        </div>
-      </div>
-    </Link>
   )
 }
