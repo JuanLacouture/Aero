@@ -58,7 +58,7 @@ export default function VendorReportsPage() {
         .map((r: { top_product_id?: string | null }) => r.top_product_id)
         .filter(Boolean) as string[]
 
-      let productNames: Record<string, string> = {}
+      const productNames: Record<string, string> = {}
       if (topIds.length > 0) {
         const { data: products } = await supabase
           .from('products')

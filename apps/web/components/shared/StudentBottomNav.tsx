@@ -2,14 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, ShoppingBag, Heart, Wallet, User } from 'lucide-react'
+import { Home, ShoppingBag, ClipboardList, Wallet, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCartStore } from '@/lib/stores/cart'
 
 const NAV_ITEMS = [
   { href: '/student/home', icon: Home, label: 'Inicio' },
   { href: '/student/order/new', icon: ShoppingBag, label: 'Pedido' },
-  { href: '/student/favorites', icon: Heart, label: 'Favoritos' },
+  { href: '/student/orders', icon: ClipboardList, label: 'Mis pedidos' },
   { href: '/student/wallet', icon: Wallet, label: 'Cartera' },
   { href: '/student/profile', icon: User, label: 'Perfil' },
 ]

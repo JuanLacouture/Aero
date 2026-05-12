@@ -42,6 +42,7 @@ export default function NewOrderPage() {
   const [orderTime, setOrderTime]         = useState('')
   const [orderTotal, setOrderTotal]       = useState(0)
   const [snapshot, setSnapshot]           = useState<CartItem[]>([])
+  const [walletBalance, setWalletBalance] = useState<number | null>(null)
 
   const refCode = useRef(`AERO-${Math.random().toString(36).slice(2, 8).toUpperCase()}`)
 
@@ -68,6 +69,16 @@ export default function NewOrderPage() {
       .then(({ data }) => setDeliveryPoints(data ?? []))
   }, [step])
 
+  useEffect(() => {
+    if (step !== 'payment') return
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('students').select('wallet_balance').eq('id', user.id).single()
+        .then(({ data }) => setWalletBalance(data?.wallet_balance ?? 0))
+    })
+  }, [step])
+
   const filteredSlots = slots.filter(s => s.delivery_point_id === selectedPoint)
   const grouped = filteredSlots.reduce<Record<string, TimeSlot[]>>((acc, s) => {
     const h = s.slot_start.slice(0, 2)
@@ -92,6 +103,7 @@ export default function NewOrderPage() {
           items: items.map(i => ({ product_id: i.product_id, quantity: i.quantity })),
           delivery_point_id: selectedPoint,
           time_slot_id: selectedSlot,
+          payment_method: paymentMethod,
         }),
       })
       const data = await res.json()
@@ -277,20 +289,37 @@ export default function NewOrderPage() {
             <div className="bg-white rounded-card border border-primary/30 p-4 mb-4">
               <div className="flex items-center gap-2 mb-3">
                 <Wallet size={18} className="text-primary" />
-                <p className="font-display font-semibold text-text-primary text-sm">Saldo AERO (simulado)</p>
+                <p className="font-display font-semibold text-text-primary text-sm">Saldo AERO</p>
               </div>
-              <div className="flex justify-between items-center">
-                <p className="text-text-secondary text-sm font-body">Saldo disponible</p>
-                <p className="font-display font-bold text-success">$50.000</p>
-              </div>
-              <div className="flex justify-between items-center mt-1">
-                <p className="text-text-secondary text-sm font-body">A descontar</p>
-                <p className="font-display font-bold text-error">- {fmt(currentTotal)}</p>
-              </div>
-              <div className="flex justify-between items-center mt-2 pt-2 border-t border-border">
-                <p className="text-text-secondary text-sm font-body">Saldo restante</p>
-                <p className="font-display font-bold text-text-primary">{fmt(50000 - currentTotal)}</p>
-              </div>
+              {walletBalance === null ? (
+                <div className="flex justify-center py-2">
+                  <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center">
+                    <p className="text-text-secondary text-sm font-body">Saldo disponible</p>
+                    <p className={cn('font-display font-bold', walletBalance >= currentTotal ? 'text-accent' : 'text-error')}>
+                      {fmt(walletBalance)}
+                    </p>
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-text-secondary text-sm font-body">A descontar</p>
+                    <p className="font-display font-bold text-error">- {fmt(currentTotal)}</p>
+                  </div>
+                  <div className="flex justify-between items-center mt-2 pt-2 border-t border-border">
+                    <p className="text-text-secondary text-sm font-body">Saldo restante</p>
+                    <p className={cn('font-display font-bold', walletBalance - currentTotal >= 0 ? 'text-text-primary' : 'text-error')}>
+                      {fmt(walletBalance - currentTotal)}
+                    </p>
+                  </div>
+                  {walletBalance < currentTotal && (
+                    <p className="text-error text-xs font-body mt-2 text-center">
+                      Saldo insuficiente — recarga tu cartera antes de pagar
+                    </p>
+                  )}
+                </>
+              )}
             </div>
           )}
 

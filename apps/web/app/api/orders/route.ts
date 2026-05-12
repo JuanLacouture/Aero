@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { vendor_id, items, delivery_point_id, time_slot_id, notes } = body
+  const { vendor_id, items, delivery_point_id, time_slot_id, notes, payment_method = 'wallet' } = body
 
   if (!vendor_id || !items?.length || !delivery_point_id || !time_slot_id) {
     return NextResponse.json(
@@ -76,6 +76,22 @@ export async function POST(request: NextRequest) {
   }))
   const total = orderItems.reduce((sum, i) => sum + i.unit_price * i.quantity, 0)
 
+  // For wallet payment: verify balance before creating order
+  if (payment_method === 'wallet') {
+    const { data: student } = await supabase
+      .from('students')
+      .select('wallet_balance')
+      .eq('id', user.id)
+      .single()
+
+    if (!student || student.wallet_balance < total) {
+      return NextResponse.json(
+        { error: `Saldo insuficiente. Disponible: $${Math.round(student?.wallet_balance ?? 0).toLocaleString('es-CO')}` },
+        { status: 402 }
+      )
+    }
+  }
+
   // Create order
   const { data: order, error: orderError } = await supabase
     .from('orders')
@@ -85,7 +101,7 @@ export async function POST(request: NextRequest) {
       time_slot_id,
       delivery_point_id,
       total_amount: total,
-      payment_method: 'wallet',
+      payment_method,
       payment_status: 'pending',
       status: 'pending',
       notes: notes ?? null,
@@ -113,21 +129,61 @@ export async function POST(request: NextRequest) {
     .update({ current_count: (slot.current_count ?? 0) + 1 })
     .eq('id', time_slot_id)
 
-  // Simulate payment: insert payment record + mark order as paid
-  await supabase.from('payments').insert({
-    order_id: order.id,
-    student_id: user.id,
-    amount: total,
-    method: 'wallet',
-    status: 'paid',
-    external_tx_id: `SIM-${Date.now()}`,
-    log_data: { simulated: true, timestamp: new Date().toISOString() },
-  })
+  // Process payment
+  if (payment_method === 'wallet') {
+    // Real wallet deduction
+    const { data: student } = await supabase
+      .from('students')
+      .select('wallet_balance')
+      .eq('id', user.id)
+      .single()
 
-  await supabase
-    .from('orders')
-    .update({ payment_status: 'paid' })
-    .eq('id', order.id)
+    const newBalance = (student?.wallet_balance ?? 0) - total
+
+    await supabase
+      .from('students')
+      .update({ wallet_balance: newBalance })
+      .eq('id', user.id)
+
+    await supabase.from('wallet_transactions').insert({
+      student_id: user.id,
+      type: 'purchase',
+      amount: total,
+      balance_after: newBalance,
+      reference: `ORDER-${order.id}`,
+    })
+
+    await supabase.from('payments').insert({
+      order_id: order.id,
+      student_id: user.id,
+      amount: total,
+      method: 'wallet',
+      status: 'paid',
+      external_tx_id: `WALLET-${Date.now()}`,
+      log_data: { method: 'wallet', balance_after: newBalance, timestamp: new Date().toISOString() },
+    })
+
+    await supabase
+      .from('orders')
+      .update({ payment_status: 'paid' })
+      .eq('id', order.id)
+  } else {
+    // Simulated payment for QR / Nequi / Daviplata
+    await supabase.from('payments').insert({
+      order_id: order.id,
+      student_id: user.id,
+      amount: total,
+      method: payment_method,
+      status: 'paid',
+      external_tx_id: `SIM-${Date.now()}`,
+      log_data: { simulated: true, method: payment_method, timestamp: new Date().toISOString() },
+    })
+
+    await supabase
+      .from('orders')
+      .update({ payment_status: 'paid' })
+      .eq('id', order.id)
+  }
 
   return NextResponse.json({ order_id: order.id }, { status: 201 })
 }

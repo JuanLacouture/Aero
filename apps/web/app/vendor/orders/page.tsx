@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
@@ -16,9 +16,12 @@ type Order = {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-700', confirmed: 'bg-blue-100 text-blue-700',
-  preparing: 'bg-orange-100 text-orange-700', ready: 'bg-green-100 text-green-700',
-  delivered: 'bg-gray-100 text-gray-500', cancelled: 'bg-red-100 text-red-500',
+  pending: 'bg-yellow-100 text-yellow-700',
+  confirmed: 'bg-blue-100 text-blue-700',
+  preparing: 'bg-orange-100 text-orange-700',
+  ready: 'bg-green-100 text-green-700',
+  delivered: 'bg-gray-100 text-gray-500',
+  cancelled: 'bg-red-100 text-red-500',
 }
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Pendiente', confirmed: 'Confirmado', preparing: 'Preparando',
@@ -31,6 +34,8 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
   pending: 'Confirmar', confirmed: 'Preparando', preparing: 'Listo para recoger',
 }
 
+const CANCELLABLE: OrderStatus[] = ['pending', 'confirmed']
+
 const fmt = (n: number) => `$${Math.round(n).toLocaleString('es-CO')}`
 
 export default function VendorOrdersPage() {
@@ -38,6 +43,8 @@ export default function VendorOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [filter, setFilter] = useState<'active' | 'done'>('active')
   const [loading, setLoading] = useState(true)
+  const [cancelTarget, setCancelTarget] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -80,6 +87,21 @@ export default function VendorOrdersPage() {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o))
   }
 
+  async function confirmCancel() {
+    if (!cancelTarget) return
+    setCancelling(true)
+    const res = await fetch(`/api/orders/${cancelTarget}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'cancelled' }),
+    })
+    if (res.ok) {
+      setOrders(prev => prev.map(o => o.id === cancelTarget ? { ...o, status: 'cancelled' } : o))
+    }
+    setCancelTarget(null)
+    setCancelling(false)
+  }
+
   const ACTIVE = ['pending', 'confirmed', 'preparing', 'ready']
   const DONE = ['delivered', 'cancelled']
   const filtered = orders.filter(o => filter === 'active' ? ACTIVE.includes(o.status ?? '') : DONE.includes(o.status ?? ''))
@@ -117,31 +139,70 @@ export default function VendorOrdersPage() {
           </div>
         ) : filtered.map(order => {
           const nextStatus = NEXT[order.status ?? 'pending']
+          const canCancel = CANCELLABLE.includes(order.status as OrderStatus)
           const items = order.order_items.map(i => `${i.products?.name ?? 'Plato'} ×${i.quantity}`).join(', ')
           return (
             <div key={order.id} className="bg-white rounded-card shadow-sm p-4">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1 min-w-0">
-                  <p className="font-mono text-xs text-text-secondary">#{order.id.slice(0,8).toUpperCase()}</p>
+                  <p className="font-mono text-xs text-text-secondary">#{order.id.slice(0, 8).toUpperCase()}</p>
                   <p className="text-sm font-body text-text-secondary mt-0.5 line-clamp-2">{items}</p>
                 </div>
                 <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full ml-2 shrink-0', STATUS_COLORS[order.status ?? 'pending'])}>
                   {STATUS_LABELS[order.status ?? 'pending']}
                 </span>
               </div>
-              <div className="flex items-center justify-between mt-2">
+              <div className="flex items-center justify-between mt-2 gap-2">
                 <p className="font-display font-bold text-text-primary">{fmt(order.total_amount)}</p>
-                {nextStatus && (
-                  <button onClick={() => updateStatus(order.id, nextStatus)}
-                    className="bg-vendor text-white px-4 py-1.5 rounded-button text-sm font-display font-semibold">
-                    {NEXT_LABEL[order.status ?? 'pending']}
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {canCancel && (
+                    <button
+                      onClick={() => setCancelTarget(order.id)}
+                      className="flex items-center gap-1 border border-red-300 text-red-500 px-3 py-1.5 rounded-button text-sm font-display font-semibold"
+                    >
+                      <X size={13} /> Cancelar
+                    </button>
+                  )}
+                  {nextStatus && (
+                    <button onClick={() => updateStatus(order.id, nextStatus)}
+                      className="bg-vendor text-white px-4 py-1.5 rounded-button text-sm font-display font-semibold">
+                      {NEXT_LABEL[order.status ?? 'pending']}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )
         })}
       </div>
+
+      {/* Cancel confirmation modal */}
+      {cancelTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-overlay">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <h2 className="font-display font-bold text-text-primary text-lg mb-2">¿Cancelar pedido?</h2>
+            <p className="text-text-secondary font-body text-sm mb-6">
+              Esta acción no se puede deshacer. El pedido quedará cancelado.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCancelTarget(null)}
+                disabled={cancelling}
+                className="flex-1 border border-border text-text-primary py-3 rounded-button font-display font-semibold text-sm"
+              >
+                Mantener
+              </button>
+              <button
+                onClick={confirmCancel}
+                disabled={cancelling}
+                className="flex-1 bg-red-500 text-white py-3 rounded-button font-display font-semibold text-sm disabled:opacity-60"
+              >
+                {cancelling ? 'Cancelando...' : 'Sí, cancelar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

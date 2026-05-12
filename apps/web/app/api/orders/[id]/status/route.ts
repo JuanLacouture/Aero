@@ -30,7 +30,7 @@ export async function PUT(
   // Fetch order, verify vendor ownership
   const { data: order } = await supabase
     .from('orders')
-    .select('id, status, vendor_id')
+    .select('id, status, vendor_id, student_id')
     .eq('id', id)
     .single()
 
@@ -58,6 +58,21 @@ export async function PUT(
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
+  }
+
+  // Fire-and-forget push notification to student when order is ready
+  if (newStatus === 'ready' && order.student_id) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+    fetch(`${appUrl}/api/push/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: order.student_id,
+        title: '¡Tu pedido está listo! 🎉',
+        body: 'Ya puedes recoger tu pedido en el punto de entrega.',
+        url: `/student/order/${id}/tracking`,
+      }),
+    }).catch(() => {/* non-blocking */})
   }
 
   return NextResponse.json({ ok: true, status: newStatus })
