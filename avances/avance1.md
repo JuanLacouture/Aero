@@ -359,6 +359,41 @@ El vendedor tiene ahora un panel dedicado para gestionar todos sus pedidos en ti
 - Botón de avance contextual según el estado actual del pedido
 - Pedidos activos y finalizados separados en tabs
 
+## Últimos Cambios Implementados (11 Mayo 2026)
+
+### Migración 002 — Auth & Security
+
+**Archivo:** `supabase/migrations/002_auth_security.sql`
+**Fecha:** 11 de mayo de 2026
+
+Esta migración complementa el schema inicial (`001`) agregando tres piezas que faltaban para que el registro de usuarios funcione correctamente según el rol elegido.
+
+### ¿Qué agrega?
+
+#### 1. Permiso de INSERT en `profiles`
+```sql
+CREATE POLICY "profiles: insert on signup"
+```
+Sin esta política, el trigger `handle_new_user` fallaba al intentar crear el perfil porque RLS bloqueaba el INSERT. Esta policy lo permite siempre que el `id` coincida con el usuario autenticado.
+
+#### 2. Función `get_my_role()`
+Función RPC que el frontend puede llamar para saber el rol del usuario activo:
+```typescript
+const { data } = await supabase.rpc('get_my_role')
+// Retorna: 'student' | 'vendor' | 'admin'
+```
+
+#### 3. Trigger `handle_new_user_role`
+El trigger del `001` creaba el perfil pero **siempre dejaba el rol como `student`** (el valor por defecto), ignorando lo que el usuario eligió al registrarse.
+
+Este nuevo trigger se dispara justo después y:
+1. Lee el rol que el usuario pasó en `raw_user_meta_data` al hacer `signUp()`
+2. Actualiza `profiles.role` con el valor correcto
+3. Inserta una fila en `students` o `vendors` según corresponda
+
+### Relación con el Bug #1
+Esta migración es el fix formal del **Bug #1** documentado en los avances del 9-10 de mayo, donde todos los usuarios quedaban registrados como `student` sin importar el rol seleccionado.
+
 **Actualizaciones en tiempo real (Supabase Realtime)**
 
 Se suscribe a dos canales de Postgres Changes:
