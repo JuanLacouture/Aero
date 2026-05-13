@@ -33,10 +33,29 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (user && isAuthPage) {
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    const dest = profile?.role === 'vendor' ? '/vendor/dashboard' : '/student/home'
-    return NextResponse.redirect(new URL(dest, request.url))
+  if (user) {
+    let role = user.user_metadata?.role as 'student' | 'vendor' | undefined
+
+    if (!role) {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      role = (prof?.role as 'student' | 'vendor') ?? 'student'
+    }
+
+    if (isAuthPage) {
+      return NextResponse.redirect(new URL(role === 'vendor' ? '/vendor/dashboard' : '/student/home', request.url))
+    }
+
+    if (isStudentRoute && role === 'vendor') {
+      return NextResponse.redirect(new URL('/vendor/dashboard', request.url))
+    }
+
+    if (isVendorRoute && role === 'student') {
+      return NextResponse.redirect(new URL('/student/home', request.url))
+    }
   }
 
   return supabaseResponse

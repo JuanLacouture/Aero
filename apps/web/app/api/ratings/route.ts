@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (!order) return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 })
-  if (order.student_id !== user.id) return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+  if (order.student_id !== user.id) return NextResponse.json({ error: 'No autorizado: el pedido no pertenece a tu cuenta. Si cambiaste de sesión, vuelve a iniciar sesión.' }, { status: 403 })
   if (order.status !== 'delivered') {
     return NextResponse.json({ error: 'El pedido debe estar entregado para calificar' }, { status: 400 })
   }

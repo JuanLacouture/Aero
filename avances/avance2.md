@@ -1,6 +1,6 @@
 # Avance 2 — Proyecto AERO
 **Conexión Alimentaria Sabana Centro · Universidad de La Sabana · Capstone 2026-1**
-**Fecha de corte:** 12 de mayo de 2026 (actualizado misma fecha)
+**Fecha de corte:** 12 de mayo de 2026 (actualizado 13 mayo 2026)
 
 ---
 
@@ -10,7 +10,9 @@ Este avance tiene dos fases:
 
 **Fase 2A** — Funcionalidad backend pendiente del MVP: wallet real, endpoint de entrega, push notifications VAPID, historial de pedidos del estudiante, cancelación de pedidos desde el panel del vendedor.
 
-**Fase 2B** — 8 mejoras UX + corrección de bugs críticos: rediseño de navegación, foto en registro de vendedor, corazones de favoritos en home, flujo de entrega con QR, botón Entregar para vendedor (corrige reportes en cero), buscador eliminado, puntos de entrega correctos, tipos TypeScript regenerados.
+**Fase 2B** — 8 mejoras UX + corrección de bugs críticos: rediseño de navegación, foto en registro de vendedor, corazones de favoritos en home, flujo de entrega con código de 4 dígitos, botón Entregar para vendedor (corrige reportes en cero), buscador eliminado, puntos de entrega correctos, tipos TypeScript regenerados.
+
+**Fase 2C** — Correcciones de estabilidad (13 mayo 2026): errores de canales Realtime, confusión de sesiones entre roles, reportes en cero por offset incorrecto.
 
 ---
 
@@ -25,7 +27,6 @@ Este avance tiene dos fases:
 | `apps/web/components/shared/ActiveOrderBubble.tsx` | Burbuja flotante de pedido activo (solo visible cuando hay pedido en curso) |
 | `apps/web/components/shared/PushSubscriptionInit.tsx` | Client boundary para inicializar push desde layout server component |
 | `apps/web/components/student/VendorCardList.tsx` | Cards de vendedor con corazones de favoritos (client component) |
-| `apps/web/components/vendor/QRScannerModal.tsx` | Modal con cámara para escanear QR del estudiante al entregar |
 
 ---
 
@@ -41,7 +42,7 @@ Este avance tiene dos fases:
 - Acepta `payment_method` del body
 - Wallet: verifica saldo antes de crear pedido → 402 si insuficiente
 - Descuenta `wallet_balance` y crea `wallet_transactions`
-- QR/Nequi/Daviplata: mantiene simulación existente
+- Nequi/Daviplata: mantiene simulación existente
 
 ---
 
@@ -70,6 +71,7 @@ Implementados (antes 501). Subscribe guarda en `profiles.fcm_token`. Send usa ad
 #### [`app/student/order/new/page.tsx`](../apps/web/app/student/order/new/page.tsx)
 
 Muestra saldo real en paso de pago, incluye `payment_method` en POST, advertencia roja si insuficiente.
+Métodos disponibles: Cartera, Nequi, Daviplata. **Opción QR eliminada** (era decorativa, flujo de pago incompleto).
 
 #### [`app/student/orders/page.tsx`](../apps/web/app/student/orders/page.tsx) *(nuevo)*
 
@@ -107,16 +109,16 @@ Client component. Carga favoritos del usuario en mount. Cada card tiene botón H
 
 #### [`app/student/order/[id]/tracking/page.tsx`](../apps/web/app/student/order/%5Bid%5D/tracking/page.tsx)
 
-Agrega sección **Código de entrega** con QR generado con `qrcode` (encodes order UUID). Visible mientras el pedido está activo (pending → ready). El vendedor escanea este QR para confirmar entrega.
+Sección **Código de entrega**: 4 dígitos derivados deterministamente del UUID del pedido (`parseInt(uuid.replace(/-/g,'').slice(0,8), 16) % 10000`). Visible mientras el pedido está activo (pending → ready). El estudiante muestra este código al vendedor al recoger. No requiere cámara, no requiere almacenamiento extra.
 
 #### [`app/vendor/orders/page.tsx`](../apps/web/app/vendor/orders/page.tsx)
 
 - Botón **"Entregar"** (verde, ícono Truck) para pedidos en `ready`
-- Abre `QRScannerModal` (dynamic import `ssr:false`)
-- Verifica que el QR escaneado coincida con el ID del pedido
-- Llama `PUT /api/orders/{id}/delivered` → pedido pasa a `delivered`
-- Toast de confirmación/error
-- Fallback manual: ingresar código si la cámara no está disponible
+- Abre modal de confirmación con input numérico de 4 dígitos
+- Compara código ingresado contra el mismo algoritmo determinista (`getDeliveryCode(orderId)`)
+- Si coincide: llama `PUT /api/orders/{id}/delivered` → pedido pasa a `delivered` + toast
+- Si no coincide: mensaje de error en modal
+- Sin dependencias externas de cámara
 
 #### [`app/(auth)/register/page.tsx`](../apps/web/app/%28auth%29/register/page.tsx)
 
@@ -125,6 +127,43 @@ Agrega campo de foto opcional en sección de vendedor. Muestra preview. Después
 #### [`app/student/vendor/[id]/menu/page.tsx`](../apps/web/app/student/vendor/%5Bid%5D/menu/page.tsx)
 
 Banner amarillo "Calificar pedido anterior →" visible si el estudiante tiene pedidos `delivered` sin calificar de ese vendedor. Link a `/student/order/{orderId}/rate`.
+
+---
+
+### Frontend (UI) — Fase 2C
+
+#### [`lib/supabase/middleware.ts`](../apps/web/lib/supabase/middleware.ts)
+
+**Problema anterior:** Middleware usaba solo `user.user_metadata.role` para proteger rutas. Si la cuenta fue creada sin ese campo en metadata (cuentas de prueba, registro antiguo), vendedores podían acceder a rutas de estudiante y viceversa — "confusión de sesiones".
+
+**Fix:**
+- Lee `user_metadata.role` primero (sin DB query, rápido)
+- Si es `undefined`, hace fallback a `profiles.role` en DB (solo para cuentas con metadata incompleto)
+- Redirige vendedores de `/student/*` a `/vendor/dashboard` y estudiantes de `/vendor/*` a `/student/home`
+- Consistente con `login/page.tsx` que también usa `profiles.role` para el redirect post-login
+
+#### [`app/vendor/dashboard/page.tsx`](../apps/web/app/vendor/dashboard/page.tsx)
+
+**Problema anterior:** Canal Realtime con nombre estático `'vendor-orders'`. React StrictMode monta el componente dos veces: el segundo intento llamaba `.on()` sobre un canal ya suscrito → error `cannot add postgres_changes callbacks for realtime:vendor-orders after subscribe()`.
+
+**Fix:**
+- Canal renombrado a `` `vendor-dashboard-${user.id}` `` (específico por usuario)
+- Patrón `cancelled` flag para evitar carrera async en cleanup
+- `supabase.removeChannel(channel)` en cleanup (no `.unsubscribe()`)
+
+#### [`app/vendor/orders/page.tsx`](../apps/web/app/vendor/orders/page.tsx) *(también 2C)*
+
+Mismo patrón de fix de Realtime: canal `` `vendor-orders-${user.id}` ``, `cancelled` flag, `removeChannel`.
+
+#### [`components/shared/ActiveOrderBubble.tsx`](../apps/web/components/shared/ActiveOrderBubble.tsx) *(también 2C)*
+
+Mismo patrón: canal `` `active-order-${user.id}` ``, `cancelled` flag, `removeChannel`.
+
+#### [`app/vendor/reports/page.tsx`](../apps/web/app/vendor/reports/page.tsx)
+
+**Problema:** `generateReport()` llamaba edge function con `week_offset: 1` (semana anterior). Todos los pedidos de prueba creados en la semana actual → reporte siempre en cero.
+
+**Fix:** `week_offset: 0` (semana actual).
 
 ---
 
@@ -150,13 +189,12 @@ Renombra los 3 puntos de entrega existentes por ID (preserva FK refs a `time_slo
 
 ---
 
-### Dependencias Nuevas
+### Dependencias
 
 ```bash
-# apps/web
-qrcode          # Genera QR code como data URL (client-side)
-@types/qrcode   # Tipos TypeScript para qrcode
-html5-qrcode    # Escanea QR con cámara del dispositivo (vendor)
+# apps/web — agregadas en Fase 2B y luego removidas
+# qrcode, @types/qrcode, html5-qrcode → eliminadas (Fase 2C)
+# La entrega por código de 4 dígitos no requiere dependencias externas
 ```
 
 ---
@@ -172,8 +210,18 @@ html5-qrcode    # Escanea QR con cámara del dispositivo (vendor)
 
 | # | Bug | Causa | Fix |
 |---|---|---|---|
-| 10 | Reportes siempre en cero | `weekly-report` solo cuenta `delivered`, pero ningún botón en UI llamaba el endpoint `/delivered` | Botón "Entregar" + QR flow completan la máquina de estados |
+| 10 | Reportes siempre en cero | `weekly-report` solo cuenta `delivered`, pero ningún botón en UI llamaba el endpoint `/delivered` | Botón "Entregar" + flujo de código completan la máquina de estados |
 | 11 | `'use client'` en layout rompía webpack | Layout `student/layout.tsx` marcado como client component causaba que chunks `main-app.js` no se generaran | Revertido a Server Component, client code en boundaries separados |
+
+## Bugs Corregidos (Fase 2C — 13 Mayo 2026)
+
+| # | Bug | Causa | Fix |
+|---|---|---|---|
+| 12 | `cannot add postgres_changes callbacks for realtime:vendor-orders after subscribe()` | Canal Realtime con nombre estático en `vendor/dashboard` — React StrictMode doble-mount devuelve mismo objeto de canal ya suscrito | Canal renombrado a `vendor-dashboard-${user.id}`, patrón `cancelled` flag + `removeChannel` |
+| 13 | Misma error Realtime en `vendor/orders` y `ActiveOrderBubble` | Mismo patrón: nombre de canal sin user ID | Canales específicos por usuario en todos los componentes |
+| 14 | Confusión de sesiones: vendedor ve rutas de estudiante | Middleware usaba solo `user_metadata.role`; cuentas sin ese campo en metadata bypassaban protección | Fallback a `profiles.role` en DB cuando metadata no tiene role |
+| 15 | Reportes generados con `week_offset: 1` mostraban cero | Offset apuntaba a semana anterior; todos los pedidos de prueba son de la semana actual | Cambiado a `week_offset: 0` |
+| 16 | QR code requería cámara y dependencias pesadas (`html5-qrcode`) | Flujo innecesariamente complejo para un demo en red local | Reemplazado por código de 4 dígitos determinista sin dependencias |
 
 ---
 
@@ -185,6 +233,7 @@ html5-qrcode    # Escanea QR con cámara del dispositivo (vendor)
 ✓ 35 páginas generadas
 ✓ Todas las API routes activas
 ✓ tipos/database.ts regenerado — ~80 errores TS eliminados
+✓ Sin dependencias de cámara/QR
 ```
 
 ---
@@ -244,7 +293,7 @@ Sin esta key, push notifications cross-user no funcionan.
 
 ---
 
-## Resumen de Estado por Módulo (Actualizado 12 Mayo 2026)
+## Resumen de Estado por Módulo (Actualizado 13 Mayo 2026)
 
 | Módulo | Estado | Notas |
 |---|---|---|
@@ -253,37 +302,38 @@ Sin esta key, push notifications cross-user no funcionan.
 | OAuth Microsoft | ⚙️ Config pendiente | Código listo, falta Azure Portal |
 | Base de datos + RLS | ✅ Completo | 14 tablas, tipos TS regenerados |
 | Storage de imágenes | ✅ Completo | 4 buckets, foto subible desde registro |
-| Dashboard del vendedor | ✅ Completo | Realtime, estadísticas, toggle is_open |
+| Dashboard del vendedor | ✅ Completo | Realtime estable, estadísticas, toggle is_open |
 | CRUD de productos (vendedor) | ✅ Completo | Con imágenes, validación Zod |
 | Home del estudiante | ✅ Completo | Cards con corazones, sin buscador falso |
 | Favoritos | ✅ Completo | Corazón en home + menú vendedor + página `/student/favorites` accesible desde nav |
 | Menú del vendedor (estudiante) | ✅ Completo | Rating CTA si tiene pedido sin calificar |
 | Flujo de pedido + wallet | ✅ Completo | Saldo real, deducción real, 402 si insuficiente |
-| Flujo de pedido + otros métodos | ✅ Demo | QR/Nequi/Daviplata simulados |
+| Flujo de pedido + otros métodos | ✅ Demo | Nequi/Daviplata simulados |
 | Puntos de entrega | ✅ Completo | 3 puntos correctos: Clínica, Ad Portas, CA |
-| Tracking del pedido | ✅ Completo | Realtime + QR code visible para mostrar al vendedor |
-| Entrega con QR | ✅ Completo | Vendedor escanea QR → pedido pasa a `delivered` |
+| Tracking del pedido | ✅ Completo | Realtime estable + código de 4 dígitos |
+| Entrega con código | ✅ Completo | Estudiante muestra 4 dígitos → vendedor confirma → `delivered` |
 | Marcar pedido entregado | ✅ Completo | Endpoint + UI botón "Entregar" en panel vendedor |
-| Gestión de pedidos (vendedor) | ✅ Completo | Realtime, estados, cancelar, entregar con QR |
+| Gestión de pedidos (vendedor) | ✅ Completo | Realtime estable, estados, cancelar, entregar |
 | Historial de pedidos (estudiante) | ✅ Completo | Tabs, tarjetas, tracking, botón calificar |
 | Calificaciones | ✅ Completo | API + UI 3 dimensiones + CTA en menú vendedor |
 | Wallet | ✅ Completo | Recarga, historial, deducción real |
 | Perfil estudiante | ✅ Completo | Avatar, datos, carné |
 | Perfil vendedor | ✅ Completo | Portada (actualizable en registro y perfil), toggle, horario |
 | Navegación estudiante | ✅ Completo | 4 tabs + burbuja flotante de pedido activo |
-| Reportes semanales | ✅ Completo | Bug corregido: orders ahora llegan a `delivered` |
+| Reportes semanales | ✅ Completo | Offset corregido, orders llegan a `delivered` via código |
+| Protección de rutas por rol | ✅ Completo | Middleware con fallback a DB — sin confusión de sesiones |
 | Push Notifications (VAPID) | ✅ Implementado | Falta `SUPABASE_SERVICE_ROLE_KEY` en env |
 | Tipos TypeScript | ✅ Completo | Regenerados via MCP Supabase |
 | Pasarelas de pago reales | 🔜 Fuera de alcance | Stubs aceptados para demo |
 
 ---
 
-## Cómo Probar las Nuevas Funcionalidades (Fase 2B)
+## Cómo Probar las Nuevas Funcionalidades
 
-### Flujo completo de entrega con QR
-1. Estudiante hace pedido → llega al tracking → ver QR en pantalla
-2. Vendedor en `/vendor/orders` → pedido pasa por estados hasta `Listo para recoger`
-3. Vendedor toca **"Entregar"** → abre cámara → escanea QR del estudiante
+### Flujo completo de entrega con código de 4 dígitos
+1. Estudiante hace pedido → llega al tracking → ver 4 dígitos en pantalla
+2. Vendedor en `/vendor/orders` → avanza pedido hasta `Listo para recoger`
+3. Vendedor toca **"Entregar"** → ingresa los 4 dígitos del estudiante → Confirmar
 4. Pedido pasa a `delivered` → toast de confirmación
 5. Estudiante ve botón "Calificar" en historial y en menú del restaurante
 
@@ -304,10 +354,10 @@ Sin esta key, push notifications cross-user no funcionan.
 4. Registrarse → foto aparece en dashboard del vendedor
 
 ### Reportes (fix)
-1. Entregar un pedido via QR flow (arriba)
+1. Entregar un pedido via flujo de código (arriba)
 2. Ir a `/vendor/reports` → "Generar"
 3. Reporte debe mostrar pedidos y revenue reales (ya no cero)
 
 ---
 
-*Documento actualizado: 12-Mayo-2026 | Proyecto AERO | Capstone 2026-1*
+*Documento actualizado: 13-Mayo-2026 | Proyecto AERO | Capstone 2026-1*

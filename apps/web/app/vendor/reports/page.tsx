@@ -34,6 +34,8 @@ export default function VendorReportsPage() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [selected, setSelected] = useState<WeeklyReport | null>(null)
+  const [generateError, setGenerateError] = useState('')
+  const [deliveredCount, setDeliveredCount] = useState<number | null>(null)
 
   useEffect(() => {
     loadReports()
@@ -44,6 +46,26 @@ export default function VendorReportsPage() {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+
+    // Compute Colombia week bounds for diagnostic
+    const COL_OFFSET_MS = 5 * 60 * 60 * 1000
+    const col = new Date(Date.now() - COL_OFFSET_MS)
+    const dow = col.getUTCDay()
+    const monCol = new Date(col)
+    monCol.setUTCDate(col.getUTCDate() - ((dow + 6) % 7))
+    monCol.setUTCHours(0, 0, 0, 0)
+    const sunEndCol = new Date(monCol.getTime() + 7 * 24 * 60 * 60 * 1000 - 1)
+    const weekStartTs = new Date(monCol.getTime() + COL_OFFSET_MS).toISOString()
+    const weekEndTs = new Date(sunEndCol.getTime() + COL_OFFSET_MS).toISOString()
+
+    const { count } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('vendor_id', user.id)
+      .eq('status', 'delivered')
+      .gte('created_at', weekStartTs)
+      .lte('created_at', weekEndTs)
+    setDeliveredCount(count ?? 0)
 
     const { data: reps } = await supabase
       .from('weekly_reports')
@@ -83,15 +105,33 @@ export default function VendorReportsPage() {
 
   async function generateReport() {
     setGenerating(true)
+    setGenerateError('')
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      await supabase.functions.invoke('weekly-report', {
-        body: { vendor_id: user.id, week_offset: 1 },
+      const { error: fnError } = await supabase.functions.invoke('weekly-report', {
+        body: { vendor_id: user.id, week_offset: 0 },
       })
+
+      if (fnError) {
+        // Edge Function failed — fallback to API route
+        const res = await fetch('/api/reports/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ week_offset: 0 }),
+        })
+        if (!res.ok) {
+          const json = await res.json() as { error: string }
+          setGenerateError(json.error ?? 'Error al generar reporte')
+          return
+        }
+      }
+
       await loadReports()
+    } catch {
+      setGenerateError('Error al generar reporte. Intenta de nuevo.')
     } finally {
       setGenerating(false)
     }
@@ -137,6 +177,24 @@ export default function VendorReportsPage() {
         </div>
       </div>
 
+      {generateError && (
+        <div className="mx-4 mt-3 p-3 bg-error/10 rounded-xl flex items-start gap-2">
+          <AlertCircle size={16} className="text-error shrink-0 mt-0.5" />
+          <p className="text-sm font-body text-error">{generateError}</p>
+        </div>
+      )}
+
+      {deliveredCount !== null && (
+        <div className="mx-4 mt-3 p-3 bg-white rounded-xl shadow-sm flex items-center gap-2">
+          <ShoppingBag size={14} className="text-vendor shrink-0" />
+          <p className="text-xs font-body text-text-secondary">
+            {deliveredCount > 0
+              ? `${deliveredCount} pedido${deliveredCount !== 1 ? 's' : ''} entregado${deliveredCount !== 1 ? 's' : ''} esta semana`
+              : 'Sin pedidos entregados esta semana — completa la entrega con el código de 4 dígitos para que aparezcan en el reporte'}
+          </p>
+        </div>
+      )}
+
       {reports.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center px-8">
           <div className="bg-vendor/10 rounded-full p-5 mb-4">
@@ -146,7 +204,7 @@ export default function VendorReportsPage() {
             Sin reportes aún
           </p>
           <p className="text-text-secondary text-sm font-body mt-1 max-w-xs">
-            Genera tu primer reporte para ver las estadísticas de la semana anterior
+            Genera tu primer reporte para ver las estadísticas de la semana actual
           </p>
         </div>
       ) : (
@@ -204,6 +262,15 @@ function ReportDetail({ report }: { report: WeeklyReport }) {
 
   return (
     <div className="flex flex-col gap-3">
+      {(report.total_orders === 0 || report.total_orders === null) && (
+        <div className="bg-white rounded-card shadow-sm p-4 flex items-start gap-2">
+          <AlertCircle size={16} className="text-warning shrink-0 mt-0.5" />
+          <p className="text-sm font-body text-text-secondary">
+            No hay pedidos entregados esta semana. Para que aparezcan en el reporte, completa la entrega con el código de 4 dígitos.
+          </p>
+        </div>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3">
         <StatCard

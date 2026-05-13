@@ -61,6 +61,15 @@ export default function RateOrderPage() {
   useEffect(() => {
     const supabase = createClient()
     async function load() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.replace('/login'); return }
+      // Skip role check in dev — same-browser multi-account testing shares one cookie
+      if (process.env.NODE_ENV !== 'development') {
+        const { data: profile } = await supabase
+          .from('profiles').select('role').eq('id', user.id).single()
+        if (profile?.role !== 'student') { router.replace('/vendor/dashboard'); return }
+      }
+
       const { data } = await supabase
         .from('orders')
         .select(`
@@ -104,7 +113,11 @@ export default function RateOrderPage() {
       setDone(true)
     } else {
       const json = await res.json() as { error: string }
-      setError(json.error ?? 'Error al enviar calificación')
+      if (res.status === 403) {
+        setError('Tu sesión ha cambiado. Vuelve a iniciar sesión como estudiante.')
+      } else {
+        setError(json.error ?? 'Error al enviar calificación')
+      }
     }
   }
 

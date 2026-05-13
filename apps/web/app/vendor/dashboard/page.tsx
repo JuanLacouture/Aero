@@ -44,10 +44,11 @@ export default function VendorDashboardPage() {
   useEffect(() => {
     const supabase = createClient()
     let channel: ReturnType<typeof supabase.channel> | null = null
+    let cancelled = false
 
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user || cancelled) return
 
       const [profileRes, vendorRes, ordersRes] = await Promise.all([
         supabase.from('profiles').select('full_name').eq('id', user.id).single(),
@@ -64,12 +65,14 @@ export default function VendorDashboardPage() {
           .limit(20),
       ])
 
+      if (cancelled) return
+
       if (profileRes.data) setProfile(profileRes.data)
       if (vendorRes.data) setVendor(vendorRes.data)
       if (ordersRes.data) setOrders(ordersRes.data as unknown as Order[])
       setLoading(false)
 
-      channel = supabase.channel('vendor-orders')
+      channel = supabase.channel(`vendor-dashboard-${user.id}`)
         .on('postgres_changes', {
           event: 'INSERT', schema: 'public', table: 'orders',
           filter: `vendor_id=eq.${user.id}`,
@@ -88,6 +91,7 @@ export default function VendorDashboardPage() {
     load()
 
     return () => {
+      cancelled = true
       if (channel) supabase.removeChannel(channel)
     }
   }, [])

@@ -1,16 +1,36 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-function getWeekBounds(offset = 0): { week_start: string; week_end: string } {
+const COL_OFFSET_MS = 5 * 60 * 60 * 1000 // Colombia = UTC-5
+
+function getWeekBounds(offset = 0): {
+  week_start: string
+  week_end: string
+  weekStartTs: string
+  weekEndTs: string
+} {
   const now = new Date()
-  const dayOfWeek = now.getUTCDay() // 0=Sun
-  const monday = new Date(now)
-  monday.setUTCDate(now.getUTCDate() - ((dayOfWeek + 6) % 7) - offset * 7)
-  monday.setUTCHours(0, 0, 0, 0)
-  const sunday = new Date(monday)
-  sunday.setUTCDate(monday.getUTCDate() + 6)
-  const fmt = (d: Date) => d.toISOString().slice(0, 10)
-  return { week_start: fmt(monday), week_end: fmt(sunday) }
+  // Determine current date/time in Colombia (UTC-5)
+  const col = new Date(now.getTime() - COL_OFFSET_MS)
+  const dow = col.getUTCDay() // 0=Sun
+  const daysToMon = (dow + 6) % 7 // Mon=0 … Sun=6
+
+  // Monday of the target week at Colombia midnight
+  const monCol = new Date(col)
+  monCol.setUTCDate(col.getUTCDate() - daysToMon - offset * 7)
+  monCol.setUTCHours(0, 0, 0, 0)
+
+  // Sunday end = Monday + 7 days - 1 ms (still in Colombia clock)
+  const sunEndCol = new Date(monCol.getTime() + 7 * 24 * 60 * 60 * 1000 - 1)
+
+  const week_start = monCol.toISOString().slice(0, 10)
+  const week_end = sunEndCol.toISOString().slice(0, 10)
+
+  // Convert Colombia midnight → UTC by adding the 5-hour offset back
+  const weekStartTs = new Date(monCol.getTime() + COL_OFFSET_MS).toISOString()
+  const weekEndTs = new Date(sunEndCol.getTime() + COL_OFFSET_MS).toISOString()
+
+  return { week_start, week_end, weekStartTs, weekEndTs }
 }
 
 serve(async (req) => {
@@ -30,9 +50,7 @@ serve(async (req) => {
     } catch { /* no body */ }
   }
 
-  const { week_start, week_end } = getWeekBounds(weekOffset)
-  const weekStartTs = `${week_start}T00:00:00.000Z`
-  const weekEndTs = `${week_end}T23:59:59.999Z`
+  const { week_start, week_end, weekStartTs, weekEndTs } = getWeekBounds(weekOffset)
 
   // Get vendors to process
   let vendorIds: string[] = []

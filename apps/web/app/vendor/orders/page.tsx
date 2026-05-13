@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, X, Truck } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
-const QRScannerModal = dynamic(() => import('@/components/vendor/QRScannerModal'), { ssr: false })
+function getDeliveryCode(orderId: string): string {
+  return String(parseInt(orderId.replace(/-/g, '').slice(0, 8), 16) % 10000).padStart(4, '0')
+}
 
 type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled'
 type Order = {
@@ -49,16 +50,19 @@ export default function VendorOrdersPage() {
   const [cancelTarget, setCancelTarget] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [scanningOrderId, setScanningOrderId] = useState<string | null>(null)
+  const [codeInput, setCodeInput] = useState('')
+  const [codeError, setCodeError] = useState('')
   const [delivering, setDelivering] = useState(false)
   const [deliverToast, setDeliverToast] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
     let channel: ReturnType<typeof supabase.channel> | null = null
+    let cancelled = false
 
-    async function load() {
+    async function init() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user || cancelled) return
 
       const { data } = await supabase.from('orders')
         .select('id, status, total_amount, created_at, order_items ( quantity, products ( name ) )')
@@ -66,10 +70,11 @@ export default function VendorOrdersPage() {
         .order('created_at', { ascending: false })
         .limit(50)
 
-      if (data) setOrders(data as unknown as Order[])
-      setLoading(false)
+      if (!cancelled && data) setOrders(data as unknown as Order[])
+      if (!cancelled) setLoading(false)
 
-      channel = supabase.channel('vendor-orders-page')
+      if (cancelled) return
+      channel = supabase.channel(`vendor-orders-${user.id}`)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `vendor_id=eq.${user.id}` },
           payload => setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o)))
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: `vendor_id=eq.${user.id}` },
@@ -77,9 +82,10 @@ export default function VendorOrdersPage() {
         .subscribe()
     }
 
-    load()
+    init()
 
     return () => {
+      cancelled = true
       if (channel) supabase.removeChannel(channel)
     }
   }, [])
@@ -194,7 +200,7 @@ export default function VendorOrdersPage() {
                   )}
                   {order.status === 'ready' && (
                     <button
-                      onClick={() => setScanningOrderId(order.id)}
+                      onClick={() => { setScanningOrderId(order.id); setCodeInput(''); setCodeError('') }}
                       disabled={delivering}
                       className="flex items-center gap-1.5 bg-success text-white px-4 py-1.5 rounded-button text-sm font-display font-semibold disabled:opacity-60"
                     >
@@ -208,15 +214,56 @@ export default function VendorOrdersPage() {
         })}
       </div>
 
-      {/* QR scanner modal */}
+      {/* 4-digit delivery code modal */}
       {scanningOrderId && (
-        <QRScannerModal
-          isOpen={!!scanningOrderId}
-          expectedOrderId={scanningOrderId}
-          onClose={() => setScanningOrderId(null)}
-          onConfirm={() => deliverOrder(scanningOrderId)}
-          onError={msg => showToast(msg)}
-        />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-overlay">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <Truck size={18} className="text-success" />
+              <h2 className="font-display font-bold text-text-primary text-lg">Confirmar entrega</h2>
+            </div>
+            <p className="text-text-secondary font-body text-sm mb-4">
+              Pide al estudiante que muestre su código de entrega e ingrésalo aquí.
+            </p>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="0000"
+              value={codeInput}
+              onChange={e => { setCodeInput(e.target.value.replace(/\D/g, '').slice(0, 4)); setCodeError('') }}
+              className="w-full text-center text-4xl font-mono font-bold tracking-[0.4em] border-2 border-border rounded-xl py-4 bg-background focus:border-success focus:ring-2 focus:ring-success/20 outline-none transition-all"
+            />
+            {codeError && (
+              <p className="text-error text-xs font-body text-center mt-2">{codeError}</p>
+            )}
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => setScanningOrderId(null)}
+                disabled={delivering}
+                className="flex-1 border border-border text-text-primary py-3 rounded-button font-display font-semibold text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  if (!scanningOrderId) return
+                  if (codeInput === getDeliveryCode(scanningOrderId)) {
+                    const id = scanningOrderId
+                    setScanningOrderId(null)
+                    deliverOrder(id)
+                  } else {
+                    setCodeError('Código incorrecto. Pide al estudiante que muestre su pantalla.')
+                  }
+                }}
+                disabled={codeInput.length !== 4 || delivering}
+                className="flex-1 bg-success text-white py-3 rounded-button font-display font-semibold text-sm disabled:opacity-60"
+              >
+                {delivering ? 'Entregando…' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Toast notification */}

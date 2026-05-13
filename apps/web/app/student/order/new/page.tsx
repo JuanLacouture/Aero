@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useCartStore } from '@/lib/stores/cart'
 import {
   ArrowLeft, MapPin, Clock, Minus, Plus,
-  Smartphone, QrCode, Wallet, CheckCircle, Receipt,
+  Smartphone, Wallet, CheckCircle, Receipt,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -18,7 +18,6 @@ type Step = 'cart' | 'timeslot' | 'payment' | 'receipt'
 
 const PAYMENT_METHODS = [
   { id: 'wallet',    label: 'Mi Saldo AERO',  icon: Wallet,     description: 'Débito automático del saldo' },
-  { id: 'qr',       label: 'Código QR',       icon: QrCode,     description: 'Escanea con tu app bancaria' },
   { id: 'nequi',    label: 'Nequi',           icon: Smartphone, description: 'Paga con tu celular Nequi' },
   { id: 'daviplata',label: 'Daviplata',        icon: Smartphone, description: 'Paga con Daviplata' },
 ]
@@ -43,8 +42,6 @@ export default function NewOrderPage() {
   const [orderTotal, setOrderTotal]       = useState(0)
   const [snapshot, setSnapshot]           = useState<CartItem[]>([])
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
-
-  const refCode = useRef(`AERO-${Math.random().toString(36).slice(2, 8).toUpperCase()}`)
 
   const currentTotal = total()
   const selectedPointData = deliveryPoints.find(d => d.id === selectedPoint)
@@ -320,57 +317,6 @@ export default function NewOrderPage() {
                   )}
                 </>
               )}
-            </div>
-          )}
-
-          {/* QR form */}
-          {paymentMethod === 'qr' && (
-            <div className="bg-white rounded-card border border-border p-4 mb-4 text-center">
-              <p className="font-display font-semibold text-text-primary text-sm mb-3">
-                Escanea con tu app bancaria
-              </p>
-              <div className="w-44 h-44 mx-auto bg-gray-50 border-2 border-gray-200 rounded-xl flex items-center justify-center mb-3">
-                <svg viewBox="0 0 100 100" className="w-36 h-36">
-                  {/* Top-left finder */}
-                  <rect x="10" y="10" width="28" height="28" fill="none" stroke="#111" strokeWidth="3"/>
-                  <rect x="16" y="16" width="16" height="16" fill="#111"/>
-                  {/* Top-right finder */}
-                  <rect x="62" y="10" width="28" height="28" fill="none" stroke="#111" strokeWidth="3"/>
-                  <rect x="68" y="16" width="16" height="16" fill="#111"/>
-                  {/* Bottom-left finder */}
-                  <rect x="10" y="62" width="28" height="28" fill="none" stroke="#111" strokeWidth="3"/>
-                  <rect x="16" y="68" width="16" height="16" fill="#111"/>
-                  {/* Data modules (static pattern) */}
-                  <rect x="42" y="10" width="4" height="4" fill="#111"/>
-                  <rect x="50" y="10" width="4" height="4" fill="#111"/>
-                  <rect x="42" y="18" width="4" height="4" fill="#111"/>
-                  <rect x="56" y="18" width="4" height="4" fill="#111"/>
-                  <rect x="10" y="42" width="4" height="4" fill="#111"/>
-                  <rect x="18" y="42" width="4" height="4" fill="#111"/>
-                  <rect x="26" y="50" width="4" height="4" fill="#111"/>
-                  <rect x="42" y="42" width="4" height="4" fill="#111"/>
-                  <rect x="50" y="50" width="4" height="4" fill="#111"/>
-                  <rect x="58" y="42" width="4" height="4" fill="#111"/>
-                  <rect x="66" y="50" width="4" height="4" fill="#111"/>
-                  <rect x="74" y="42" width="4" height="4" fill="#111"/>
-                  <rect x="82" y="50" width="4" height="4" fill="#111"/>
-                  <rect x="42" y="58" width="4" height="4" fill="#111"/>
-                  <rect x="58" y="58" width="4" height="4" fill="#111"/>
-                  <rect x="66" y="66" width="4" height="4" fill="#111"/>
-                  <rect x="74" y="58" width="4" height="4" fill="#111"/>
-                  <rect x="82" y="66" width="4" height="4" fill="#111"/>
-                  <rect x="50" y="74" width="4" height="4" fill="#111"/>
-                  <rect x="66" y="74" width="4" height="4" fill="#111"/>
-                  <rect x="82" y="74" width="4" height="4" fill="#111"/>
-                  <rect x="42" y="82" width="4" height="4" fill="#111"/>
-                  <rect x="58" y="82" width="4" height="4" fill="#111"/>
-                  <rect x="74" y="82" width="4" height="4" fill="#111"/>
-                </svg>
-              </div>
-              <p className="text-text-secondary text-xs font-body">
-                Referencia: <span className="font-mono font-bold text-text-primary">{refCode.current}</span>
-              </p>
-              <p className="text-primary font-display font-bold text-xl mt-1">{fmt(currentTotal)}</p>
             </div>
           )}
 

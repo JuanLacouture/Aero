@@ -22,6 +22,7 @@ export default function ActiveOrderBubble() {
   useEffect(() => {
     const supabase = createClient()
     let channel: ReturnType<typeof supabase.channel> | null = null
+    let cancelled = false
 
     async function fetchActive(userId: string) {
       const { data } = await supabase
@@ -32,14 +33,15 @@ export default function ActiveOrderBubble() {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()
-      setOrder(data ?? null)
+      if (!cancelled) setOrder(data ?? null)
     }
 
     async function init() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user || cancelled) return
 
       await fetchActive(user.id)
+      if (cancelled) return
 
       channel = supabase
         .channel(`active-order-${user.id}`)
@@ -53,7 +55,10 @@ export default function ActiveOrderBubble() {
     }
 
     init()
-    return () => { channel?.unsubscribe() }
+    return () => {
+      cancelled = true
+      if (channel) supabase.removeChannel(channel)
+    }
   }, [])
 
   if (!order) return null
