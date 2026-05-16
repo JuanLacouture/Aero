@@ -15,27 +15,51 @@ export async function GET(request: NextRequest) {
     )
 
     const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      const { data: { user } } = await supabase.auth.getUser()
+    if (error) {
+      console.error('[OAuth callback error]', error.message, error.status)
+      return NextResponse.redirect(`${origin}/login?error=oauth_failed`)
+    }
 
-      if (user?.user_metadata?.role === 'vendor') {
-        const { data: existing } = await supabase
-          .from('vendors').select('id').eq('id', user.id).single()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.redirect(`${origin}/login?error=oauth_failed`)
 
-        if (!existing) {
-          await supabase.from('profiles').update({ role: 'vendor' }).eq('id', user.id)
-          await supabase.from('students').delete().eq('id', user.id)
-          await supabase.from('vendors').insert({
-            id: user.id,
-            business_name: user.user_metadata.business_name ?? 'Mi Negocio',
-          })
-        }
+    // Ensure profile exists — OAuth users have no trigger-based profile creation
+    const { data: profile } = await supabase
+      .from('profiles').select('id, role').eq('id', user.id).single()
 
-        return NextResponse.redirect(`${origin}/vendor/dashboard`)
-      }
+    if (!profile) {
+      const fullName = user.user_metadata?.full_name
+        ?? user.user_metadata?.name
+        ?? user.email?.split('@')[0]
+        ?? 'Usuario'
+
+      await supabase.from('profiles').insert({
+        id: user.id,
+        full_name: fullName,
+        avatar_url: user.user_metadata?.avatar_url ?? null,
+        role: 'student',
+      })
+      await supabase.from('students').insert({ id: user.id })
 
       return NextResponse.redirect(`${origin}/student/home`)
     }
+
+    // Existing vendor
+    if (profile.role === 'vendor') {
+      const { data: existing } = await supabase
+        .from('vendors').select('id').eq('id', user.id).single()
+
+      if (!existing) {
+        await supabase.from('vendors').insert({
+          id: user.id,
+          business_name: user.user_metadata?.business_name ?? 'Mi Negocio',
+        })
+      }
+
+      return NextResponse.redirect(`${origin}/vendor/dashboard`)
+    }
+
+    return NextResponse.redirect(`${origin}/student/home`)
   }
 
   return NextResponse.redirect(`${origin}/login?error=oauth_failed`)

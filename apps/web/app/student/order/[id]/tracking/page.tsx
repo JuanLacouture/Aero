@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { APIProvider, Map, Marker, useMap } from '@vis.gl/react-google-maps'
 import { ArrowLeft, MapPin, CheckCircle, Clock, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -19,8 +20,8 @@ type Order = {
   total_amount: number
   estimated_minutes: number | null
   created_at: string | null
-  vendors: { business_name: string } | null
-  delivery_points: { name: string } | null
+  vendors: { business_name: string; location_lat: number | null; location_lng: number | null } | null
+  delivery_points: { name: string; lat: number; lng: number } | null
   order_items: {
     quantity: number
     unit_price: number
@@ -42,6 +43,38 @@ const STATUS_INDEX: Record<OrderStatus, number> = {
 
 const fmt = (n: number) => `$${Math.round(n).toLocaleString('es-CO')}`
 
+function MapContent({
+  vendorPos,
+  deliveryPos,
+}: {
+  vendorPos: { lat: number; lng: number } | null
+  deliveryPos: { lat: number; lng: number }
+}) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!map) return
+    if (vendorPos) {
+      const bounds = new window.google.maps.LatLngBounds()
+      bounds.extend(vendorPos)
+      bounds.extend(deliveryPos)
+      map.fitBounds(bounds, 60)
+    } else {
+      map.setCenter(deliveryPos)
+      map.setZoom(17)
+    }
+  }, [map, vendorPos, deliveryPos])
+
+  return (
+    <>
+      {vendorPos && (
+        <Marker position={vendorPos} title="Vendedor" label={{ text: '🍽', fontSize: '18px' }} />
+      )}
+      <Marker position={deliveryPos} title="Punto de entrega" label={{ text: '📍', fontSize: '18px' }} />
+    </>
+  )
+}
+
 export default function OrderTrackingPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
@@ -55,8 +88,8 @@ export default function OrderTrackingPage() {
       .from('orders')
       .select(`
         id, status, total_amount, estimated_minutes, created_at,
-        vendors ( business_name ),
-        delivery_points ( name ),
+        vendors ( business_name, location_lat, location_lng ),
+        delivery_points ( name, lat, lng ),
         order_items ( quantity, unit_price, products ( name ) )
       `)
       .eq('id', id)
@@ -189,15 +222,47 @@ export default function OrderTrackingPage() {
         </div>
       </div>
 
-      {/* Delivery point */}
-      {order.delivery_points && (
-        <div className="mx-4 mt-3 bg-white rounded-card shadow-sm p-4 flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-            <MapPin size={20} className="text-primary" />
+      {/* Delivery point + map */}
+      {order.delivery_points && process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
+        <div className="mx-4 mt-3 bg-white rounded-card shadow-sm overflow-hidden">
+          <div className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+              <MapPin size={20} className="text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-text-secondary font-body">
+                {order.status === 'ready' ? 'Ve a recoger tu pedido en' : 'Punto de recogida'}
+              </p>
+              <p className="font-display font-semibold text-text-primary text-sm">{order.delivery_points.name}</p>
+              {order.vendors?.location_lat && (
+                <p className="text-xs text-text-secondary font-body mt-0.5">
+                  Preparándose en {order.vendors.business_name}
+                </p>
+              )}
+            </div>
+            <Link href="/student/map" className="text-xs text-primary font-display font-semibold">
+              Ver mapa →
+            </Link>
           </div>
-          <div>
-            <p className="text-xs text-text-secondary font-body">Punto de recogida</p>
-            <p className="font-display font-semibold text-text-primary text-sm">{order.delivery_points.name}</p>
+          <div className="h-52 w-full">
+            <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}>
+              <Map
+                defaultCenter={{ lat: order.delivery_points.lat, lng: order.delivery_points.lng }}
+                defaultZoom={17}
+                gestureHandling="greedy"
+                disableDefaultUI
+                style={{ width: '100%', height: '100%' }}
+              >
+                <MapContent
+                  vendorPos={
+                    order.vendors?.location_lat && order.vendors?.location_lng
+                      ? { lat: order.vendors.location_lat, lng: order.vendors.location_lng }
+                      : null
+                  }
+                  deliveryPos={{ lat: order.delivery_points.lat, lng: order.delivery_points.lng }}
+                />
+              </Map>
+            </APIProvider>
           </div>
         </div>
       )}

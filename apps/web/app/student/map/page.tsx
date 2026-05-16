@@ -79,7 +79,7 @@ export default function DeliveryMapPage() {
       </div>
 
       {/* Mapa */}
-      <div className="h-72 w-full">
+      <div className="h-72 md:h-[500px] w-full">
         {API_KEY ? (
           <APIProvider apiKey={API_KEY}>
             <Map
