@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/utils/image-compression'
-import { ArrowLeft, Camera, LogOut, Wallet, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Bell, Camera, ChevronRight, LogOut, Wallet, CheckCircle } from 'lucide-react'
 
 type StudentData = {
   university_id: string | null
@@ -30,6 +30,7 @@ export default function StudentProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -267,28 +268,63 @@ export default function StudentProfilePage() {
                 {fmt(student.wallet_balance ?? 0)}
               </p>
             </div>
-            <span className="text-text-secondary font-body text-lg">›</span>
+            <ChevronRight size={18} className="text-text-secondary" aria-hidden="true" />
           </div>
         </Link>
       )}
 
-      {/* Email de la cuenta */}
-      <div className="mx-4 mt-3 bg-white rounded-card shadow-sm px-4 py-3">
-        <p className="text-xs font-display font-semibold text-text-secondary uppercase tracking-wide mb-1">
-          Cuenta
+      {/* Configuración */}
+      <div className="mx-4 mt-3 bg-white rounded-card shadow-sm divide-y divide-border">
+        <p className="px-4 pt-4 pb-2 text-xs font-display font-semibold text-text-secondary uppercase tracking-wide">
+          Configuración
         </p>
-        <p className="text-sm font-body text-text-primary">{email}</p>
-      </div>
 
-      {/* Cerrar sesión */}
-      <div className="mx-4 mt-4">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 border border-error text-error rounded-button py-3.5 font-display font-semibold"
-        >
-          <LogOut size={18} />
-          Cerrar sesión
-        </button>
+        {/* Email de la cuenta */}
+        <div className="px-4 py-3">
+          <p className="text-xs font-display font-semibold text-text-secondary uppercase tracking-wide mb-0.5">
+            Cuenta
+          </p>
+          <p className="text-sm font-body text-text-primary">{email}</p>
+        </div>
+
+        {/* Push notifications toggle */}
+        <div className="px-4 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Bell size={17} className="text-primary" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-sm font-display font-semibold text-text-primary">Notificaciones</p>
+              <p className="text-xs font-body text-text-secondary">Estado del pedido en tiempo real</p>
+            </div>
+          </div>
+          <button
+            role="switch"
+            aria-checked={notificationsEnabled}
+            aria-label="Activar notificaciones push"
+            onClick={() => setNotificationsEnabled(v => !v)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              notificationsEnabled ? 'bg-primary' : 'bg-gray-200'
+            }`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+              notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
+            }`} />
+          </button>
+        </div>
+
+        {/* Logout */}
+        <div className="px-4 py-1">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 py-3.5 text-error"
+          >
+            <div className="w-9 h-9 rounded-xl bg-error/10 flex items-center justify-center shrink-0">
+              <LogOut size={17} className="text-error" aria-hidden="true" />
+            </div>
+            <span className="text-sm font-display font-semibold">Cerrar sesión</span>
+          </button>
+        </div>
       </div>
     </div>
   )
