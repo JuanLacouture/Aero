@@ -45,6 +45,11 @@
     --radius-card:     16px;
     --radius-button:   12px;
 
+    /* ---- Colored shadows ---- */
+    --shadow-blue:   0 4px 24px rgba(26, 107, 255, 0.18);
+    --shadow-orange: 0 4px 24px rgba(255, 107, 0, 0.18);
+    --shadow-card:   0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+
     /* ---- shadcn/ui CSS variables ---- */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
@@ -112,4 +117,14 @@
 /* Scrollbar oculto en mobile */
 ::-webkit-scrollbar {
   display: none;
+}
+
+/* Glass utility */
+@layer utilities {
+  .glass {
+    @apply backdrop-blur-md bg-white/80 border border-white/20;
+  }
+  .glass-dark {
+    @apply backdrop-blur-md bg-white/10 border border-white/20;
+  }
 }
