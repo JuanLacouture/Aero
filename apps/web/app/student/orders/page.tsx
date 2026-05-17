@@ -74,7 +74,7 @@ export default function StudentOrdersPage() {
   )
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center" role="status" aria-label="Cargando pedidos">
       <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
     </div>
   )
@@ -141,7 +141,7 @@ export default function StudentOrdersPage() {
           const hasRating = (order.ratings ?? []).length > 0
           const canRate = order.status === 'delivered' && !hasRating
           const isActive = ACTIVE_STATUSES.includes(order.status ?? '')
-          const vendorInitial = (order.vendors?.business_name ?? 'V')[0].toUpperCase()
+          const vendorInitial = (order.vendors?.business_name || 'V')[0].toUpperCase()
 
           return (
             <button
@@ -194,12 +194,14 @@ export default function StudentOrdersPage() {
                 <p className="font-display font-bold text-text-primary">{fmt(order.total_amount)}</p>
                 <div className="flex items-center gap-2">
                   {canRate && (
-                    <span
+                    <button
+                      type="button"
+                      aria-label="Calificar pedido"
                       onClick={e => { e.stopPropagation(); router.push(`/student/order/${order.id}/rate`) }}
                       className="flex items-center gap-1 text-xs font-display font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full"
                     >
                       <Star size={12} aria-hidden="true" /> Calificar
-                    </span>
+                    </button>
                   )}
                   <span className="text-xs font-display font-semibold text-primary">
                     {isActive ? 'Ver seguimiento →' : 'Ver pedido →'}
