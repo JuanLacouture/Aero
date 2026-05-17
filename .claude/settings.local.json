@@ -10,7 +10,8 @@
       "mcp__stitch__list_projects",
       "Read(//c/Users/berri/.claude/plugins/**)",
       "Bash(C:/Users/berri/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/scripts/start-server.sh --project-dir \"c:/Users/berri/Desktop/Universidad/Captzone/Aero\")",
-      "PowerShell(bash \"C:/Users/berri/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills/brainstorming/scripts/start-server.sh\" --project-dir \"c:/Users/berri/Desktop/Universidad/Captzone/Aero\")"
+      "PowerShell(bash \"C:/Users/berri/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills/brainstorming/scripts/start-server.sh\" --project-dir \"c:/Users/berri/Desktop/Universidad/Captzone/Aero\")",
+      "Bash(xargs sed *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\berri\\Desktop\\Universidad\\Captzone\\Aero\\apps\\web\\app\\student\\vendor\\[id]"
