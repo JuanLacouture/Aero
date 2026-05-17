@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
@@ -200,10 +201,14 @@ export default function LoginPage() {
         <div className="absolute bottom-[-60px] left-[-60px] w-64 h-64 rounded-full bg-white/5 pointer-events-none" />
         <div className="absolute top-1/3 left-[-40px] w-32 h-32 rounded-full bg-white/5 pointer-events-none" />
         <div className="relative z-10 text-center">
-          <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl">
-            <span className="text-primary text-4xl font-display font-extrabold">A</span>
-          </div>
-          <h1 className="text-white text-4xl font-display font-extrabold tracking-tight">Aero</h1>
+          <Image
+            src="/logo-aero.png"
+            alt="Aero"
+            width={160}
+            height={64}
+            className="h-14 w-auto mx-auto mb-6 brightness-0 invert"
+            priority
+          />
           <p className="text-blue-200 text-lg font-body mt-3">Pide · Paga · Recoge</p>
           <p className="text-blue-300 text-sm font-body mt-4 max-w-xs mx-auto leading-relaxed">
             Tu comida favorita del campus, lista cuando la necesites
@@ -211,6 +216,19 @@ export default function LoginPage() {
           <p className="text-blue-300/50 text-xs font-body mt-16">
             Universidad de La Sabana · Capstone 2026-1
           </p>
+          <div className="mt-12 bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-5 text-left max-w-xs mx-auto">
+            <div className="flex gap-0.5 mb-3">
+              {[1,2,3,4,5].map(i => (
+                <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill="#FFD60A"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              ))}
+            </div>
+            <p className="text-white/90 text-sm font-body leading-relaxed italic">
+              "Pedí mi almuerzo entre clases y estaba listo en 15 minutos"
+            </p>
+            <p className="text-blue-300 text-xs font-body mt-3 font-semibold">
+              — María, Ingeniería Industrial
+            </p>
+          </div>
         </div>
       </div>
 
@@ -218,9 +236,14 @@ export default function LoginPage() {
       <div className="flex-1 flex flex-col bg-background md:items-center md:justify-center">
         {/* Mobile header */}
         <div className="bg-primary px-6 pt-16 pb-10 text-center md:hidden">
-          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow">
-            <span className="text-primary text-2xl font-display font-extrabold">A</span>
-          </div>
+          <Image
+            src="/logo-aero.png"
+            alt="Aero"
+            width={100}
+            height={40}
+            className="h-10 w-auto mx-auto mb-4"
+            priority
+          />
           <h1 className="text-white text-2xl font-display font-bold">Bienvenido de nuevo</h1>
           <p className="text-blue-200 text-sm font-body mt-1">Inicia sesión para continuar</p>
         </div>
