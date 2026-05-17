@@ -16,7 +16,6 @@ export default async function OrderConfirmedPage({
     .eq('id', id)
     .maybeSingle()
 
-  // @ts-expect-error vendors relation is properly typed at runtime
   const vendorName =
     (order?.vendors as { business_name: string } | null)?.business_name ?? null
 
