@@ -11,7 +11,12 @@
       "Read(//c/Users/berri/.claude/plugins/**)",
       "Bash(C:/Users/berri/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/scripts/start-server.sh --project-dir \"c:/Users/berri/Desktop/Universidad/Captzone/Aero\")",
       "PowerShell(bash \"C:/Users/berri/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills/brainstorming/scripts/start-server.sh\" --project-dir \"c:/Users/berri/Desktop/Universidad/Captzone/Aero\")",
-      "Bash(xargs sed *)"
+      "Bash(xargs sed *)",
+      "Bash(python3 -c ' *)",
+      "mcp__stitch__list_screens",
+      "Read(//c/Users/berri/AppData/Local/Temp/claude/c--Users-berri-Desktop-Universidad-Captzone-Aero/f97a12e0-5421-4916-8075-0dca5cfdb614/tasks/**)",
+      "mcp__stitch__get_screen",
+      "Bash(xargs grep *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\berri\\Desktop\\Universidad\\Captzone\\Aero\\apps\\web\\app\\student\\vendor\\[id]"
