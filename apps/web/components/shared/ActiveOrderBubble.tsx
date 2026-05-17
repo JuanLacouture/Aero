@@ -68,14 +68,14 @@ export default function ActiveOrderBubble() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16, scale: 0.9 }}
+      initial={{ opacity: 0, y: -12, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 16, scale: 0.9 }}
-      className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40"
+      exit={{ opacity: 0, y: -12, scale: 0.9 }}
+      className="fixed top-[68px] right-4 md:top-4 md:right-6 z-40"
     >
       <Link
         href={`/student/order/${order.id}/tracking`}
-        className={`flex items-center gap-2.5 shadow-blue rounded-2xl px-5 py-3 whitespace-nowrap ${bgColor} text-white`}
+        className={`flex items-center gap-2.5 shadow-blue rounded-2xl px-5 py-3 whitespace-nowrap drop-shadow-md ${bgColor} text-white`}
       >
         {/* Pulse ring */}
         <span className="relative flex h-2.5 w-2.5 shrink-0">
