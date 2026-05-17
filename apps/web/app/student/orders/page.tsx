@@ -128,7 +128,7 @@ export default function StudentOrdersPage() {
           const items = order.order_items
             .map(i => `${i.products?.name ?? 'Plato'} ×${i.quantity}`)
             .join(', ')
-          const hasRating = order.ratings.length > 0
+          const hasRating = (order.ratings ?? []).length > 0
           const canRate = order.status === 'delivered' && !hasRating
 
           return (

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Star, ChevronRight, Heart } from 'lucide-react'
+import { Star, Clock, Heart } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 export type VendorRow = {
@@ -23,6 +24,19 @@ function formatSchedule(start: string | null, end: string | null) {
   return `${start.slice(0, 5)} – ${end.slice(0, 5)}`
 }
 
+function SkeletonCard() {
+  return (
+    <div className="rounded-2xl overflow-hidden bg-white shadow-card animate-pulse">
+      <div className="h-36 bg-gray-200" />
+      <div className="p-4 space-y-2">
+        <div className="h-4 bg-gray-200 rounded w-2/3" />
+        <div className="h-3 bg-gray-100 rounded w-1/2" />
+        <div className="h-3 bg-gray-100 rounded w-1/3" />
+      </div>
+    </div>
+  )
+}
+
 export default function VendorCardList({
   vendors,
   dimmed,
@@ -30,20 +44,20 @@ export default function VendorCardList({
   vendors: VendorRow[]
   dimmed?: boolean
 }) {
-  // favMap: vendorId → favorites row id
   const [favMap, setFavMap] = useState<Map<string, string>>(new Map())
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
+      if (!user) { setLoaded(true); return }
       supabase
         .from('favorites')
         .select('id, vendor_id')
         .eq('student_id', user.id)
         .then(({ data }) => {
-          if (!data) return
-          setFavMap(new Map(data.map(f => [f.vendor_id as string, f.id as string])))
+          if (data) setFavMap(new Map(data.map(f => [f.vendor_id as string, f.id as string])))
+          setLoaded(true)
         })
     })
   }, [])
@@ -71,73 +85,95 @@ export default function VendorCardList({
     }
   }
 
+  if (!loaded) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
+      </div>
+    )
+  }
+
   return (
-    <div className={cn('flex flex-col gap-3', dimmed && 'opacity-60')}>
-      {vendors.map(vendor => {
+    <div className={cn('grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4', dimmed && 'opacity-60')}>
+      {vendors.map((vendor, i) => {
         const schedule = formatSchedule(vendor.schedule_start, vendor.schedule_end)
         const isFav = favMap.has(vendor.id)
 
         return (
-          <Link key={vendor.id} href={`/student/vendor/${vendor.id}/menu`}>
-            <div className="bg-white rounded-card shadow-sm overflow-hidden active:scale-[0.98] transition-transform cursor-pointer">
-              <div className="h-36 bg-primary-light relative">
-                {vendor.cover_image_url ? (
-                  <img
-                    src={vendor.cover_image_url}
-                    alt={vendor.business_name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary/10">
-                    <span className="text-4xl opacity-60">🍽️</span>
-                  </div>
-                )}
-                <span
-                  className={`absolute top-2 left-2 text-xs font-display font-semibold px-2 py-0.5 rounded-full ${
-                    vendor.is_open ? 'bg-success text-white' : 'bg-gray-500/80 text-white'
-                  }`}
-                >
-                  {vendor.is_open ? 'Abierto' : 'Cerrado'}
-                </span>
-                <button
-                  onClick={e => toggleFav(e, vendor.id)}
-                  className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow"
-                >
-                  <Heart
-                    size={18}
-                    className={isFav ? 'text-red-500 fill-red-500' : 'text-text-secondary'}
-                  />
-                </button>
-              </div>
-              <div className="p-3 flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-display font-bold text-text-primary text-base leading-tight truncate">
+          <motion.div
+            key={vendor.id}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: i * 0.05 }}
+            whileHover={!dimmed ? { scale: 1.02, boxShadow: '0 8px 32px rgba(0,0,0,0.10)' } : {}}
+          >
+            <Link href={`/student/vendor/${vendor.id}/menu`}>
+              <div className="bg-white rounded-2xl shadow-card overflow-hidden cursor-pointer transition-shadow">
+                {/* Cover image */}
+                <div className="h-36 bg-primary-light relative">
+                  {vendor.cover_image_url ? (
+                    <img
+                      src={vendor.cover_image_url}
+                      alt={vendor.business_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                      <span className="text-4xl opacity-50">🍽️</span>
+                    </div>
+                  )}
+
+                  {/* Status badge */}
+                  <span className={cn(
+                    'absolute top-2.5 left-2.5 text-xs font-display font-semibold px-2.5 py-1 rounded-full',
+                    vendor.is_open
+                      ? 'bg-success text-white'
+                      : 'bg-gray-900/60 text-white backdrop-blur-sm'
+                  )}>
+                    {vendor.is_open ? 'Abierto' : 'Cerrado'}
+                  </span>
+
+                  {/* Favorite button */}
+                  <motion.button
+                    onClick={e => toggleFav(e, vendor.id)}
+                    whileTap={{ scale: 0.85 }}
+                    className="absolute top-2.5 right-2.5 bg-white/80 backdrop-blur-sm rounded-full p-1.5 shadow-sm"
+                  >
+                    <Heart
+                      size={16}
+                      className={isFav ? 'text-red-500 fill-red-500' : 'text-gray-500'}
+                    />
+                  </motion.button>
+                </div>
+
+                {/* Card body */}
+                <div className="p-3.5">
+                  <h3 className="font-display font-bold text-gray-900 text-sm leading-tight truncate">
                     {vendor.business_name}
                   </h3>
                   {vendor.description && (
-                    <p className="text-text-secondary text-xs font-body mt-0.5 line-clamp-1">
+                    <p className="text-gray-400 text-xs font-body mt-0.5 line-clamp-1">
                       {vendor.description}
                     </p>
                   )}
-                  <div className="flex items-center gap-2 mt-1.5">
+                  <div className="flex items-center gap-2.5 mt-2">
                     <div className="flex items-center gap-0.5">
-                      <Star size={12} className="text-yellow-400 fill-yellow-400" />
-                      <span className="text-sm font-display font-semibold text-text-primary">
+                      <Star size={11} className="text-yellow-400 fill-yellow-400" />
+                      <span className="text-xs font-display font-semibold text-gray-900">
                         {vendor.rating_avg?.toFixed(1) ?? '—'}
                       </span>
-                      {vendor.rating_count != null && (
-                        <span className="text-xs text-text-secondary">({vendor.rating_count})</span>
-                      )}
                     </div>
                     {schedule && (
-                      <span className="text-xs text-text-secondary">{schedule}</span>
+                      <div className="flex items-center gap-0.5">
+                        <Clock size={10} className="text-gray-400" />
+                        <span className="text-xs text-gray-400 font-body">{schedule}</span>
+                      </div>
                     )}
                   </div>
                 </div>
-                <ChevronRight size={18} className="text-text-secondary mt-0.5 shrink-0" />
               </div>
-            </div>
-          </Link>
+            </Link>
+          </motion.div>
         )
       })}
     </div>

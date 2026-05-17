@@ -64,6 +64,15 @@ const config: Config = {
         card: '16px',
         button: '12px',
       },
+      boxShadow: {
+        blue: '0 4px 24px rgba(26, 107, 255, 0.18)',
+        'blue-lg': '0 8px 40px rgba(26, 107, 255, 0.22)',
+        orange: '0 4px 24px rgba(255, 107, 0, 0.18)',
+        'orange-lg': '0 8px 40px rgba(255, 107, 0, 0.22)',
+        card: '0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)',
+        'card-hover': '0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)',
+        nav: '0 -4px 24px rgba(0,0,0,0.06)',
+      },
       screens: {
         // Mobile first base: 375px
         xs: '375px',
