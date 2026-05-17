@@ -17,7 +17,7 @@ export default function StudentBottomNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-border max-w-lg mx-auto">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-border">
       <div className="flex items-center justify-around h-16 px-2">
         {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
           const active = pathname.startsWith(href)

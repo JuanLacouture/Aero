@@ -118,36 +118,38 @@ export default function VendorDashboardPage() {
   return (
     <div className="min-h-screen bg-vendor-background">
       {/* Header */}
-      <div className="bg-vendor px-4 pt-12 pb-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-orange-200 text-xs font-body uppercase tracking-wide">AERO Vendedor</p>
-            <h1 className="text-white text-xl font-display font-bold mt-0.5">
-              Hola, {firstName} 👋
-            </h1>
+      <div className="bg-vendor px-4 md:px-8 pt-8 pb-5">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-orange-200 text-xs font-body uppercase tracking-wide">AERO Vendedor</p>
+              <h1 className="text-white text-xl md:text-2xl font-display font-bold mt-0.5">
+                Hola, {firstName} 👋
+              </h1>
+            </div>
+            {/* Open toggle */}
+            <button onClick={toggleOpen} disabled={togglingOpen}
+              className="flex items-center gap-2 bg-white/15 rounded-xl px-3 py-2">
+              {vendor?.is_open
+                ? <ToggleRight size={22} className="text-white" />
+                : <ToggleLeft size={22} className="text-white/60" />}
+              <span className={cn('text-sm font-display font-semibold', vendor?.is_open ? 'text-white' : 'text-white/60')}>
+                {vendor?.is_open ? 'Abierto' : 'Cerrado'}
+              </span>
+            </button>
           </div>
-          {/* Open toggle */}
-          <button onClick={toggleOpen} disabled={togglingOpen}
-            className="flex items-center gap-2 bg-white/15 rounded-xl px-3 py-2">
-            {vendor?.is_open
-              ? <ToggleRight size={22} className="text-white" />
-              : <ToggleLeft size={22} className="text-white/60" />}
-            <span className={cn('text-sm font-display font-semibold', vendor?.is_open ? 'text-white' : 'text-white/60')}>
-              {vendor?.is_open ? 'Abierto' : 'Cerrado'}
-            </span>
-          </button>
-        </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-2 mt-4">
-          <StatCard icon={ShoppingBag} value={String(todayOrders)} label="Pedidos hoy" />
-          <StatCard icon={TrendingUp} value={fmt(todayRevenue)} label="Ingresos" small />
-          <StatCard icon={Star} value={vendor?.rating_avg?.toFixed(1) ?? '—'} label="Calificación" />
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            <StatCard icon={ShoppingBag} value={String(todayOrders)} label="Pedidos hoy" />
+            <StatCard icon={TrendingUp} value={fmt(todayRevenue)} label="Ingresos" small />
+            <StatCard icon={Star} value={vendor?.rating_avg?.toFixed(1) ?? '—'} label="Calificación" />
+          </div>
         </div>
       </div>
 
       {/* Orders */}
-      <div className="px-4 py-4">
+      <div className="px-4 md:px-8 py-4 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-display font-bold text-text-primary text-base">Pedidos activos</h2>
           <Link href="/vendor/orders" className="text-vendor text-sm font-body">Ver todos</Link>
@@ -160,7 +162,7 @@ export default function VendorDashboardPage() {
             <p className="text-text-disabled text-xs font-body mt-1">Los nuevos pedidos aparecerán aquí</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {orders.map(order => (
               <OrderCard key={order.id} order={order} onStatusChange={(id, status) => {
                 setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))

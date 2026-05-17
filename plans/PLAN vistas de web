@@ -1,0 +1,65 @@
+# Migración a Diseño Responsivo (Desktop y Web) para AERO
+
+El objetivo de este plan es adaptar todas las vistas de la plataforma AERO, que actualmente utilizan un enfoque estricto de "Mobile First" (`max-w-lg mx-auto`), para que sean completamente responsivas. En pantallas de escritorio (computador), la interfaz aprovechará todo el espacio disponible sin perder la estética premium, tipografía, colores ni la lógica actual.
+
+> [!IMPORTANT]
+> **INSTRUCCIÓN CRÍTICA PARA CLAUDE CODE:** 
+> Claude, debes guiarte estrictamente por el **MCP de Stitch**. Todas las vistas y los componentes base requeridos para esta migración responsiva ya se encuentran dentro de las capacidades y recursos generados en Stitch. Consulta las herramientas expuestas por el MCP de Stitch antes de implementar código desde cero para garantizar la coherencia visual absoluta.
+
+## Decisiones de Diseño (Aprobadas)
+
+Las siguientes estrategias han sido confirmadas para la adaptación a escritorio:
+
+**1. Estrategia de Navegación principal en Computador (`StudentLayout` y `VendorLayout`)**
+✅ **Opción B: Top Navbar.** Se moverá la navegación a una barra superior clásica en escritorio, manteniendo el `BottomNav` únicamente en móvil.
+
+**2. Layout de las vistas de Autenticación (`login` y `register`)**
+✅ **Opción A: Pantalla Dividida (Split Screen).** Mitad izquierda de la pantalla con una imagen o diseño institucional impactante usando los colores de AERO, y la mitad derecha con el formulario centrado.
+
+**3. Visualización de Listados (Ej: Vendedores en Inicio, Menú de Productos, Historial de Pedidos)**
+✅ **Opción A: Grid Responsivo.** A medida que la pantalla crece, se pasará de 1 columna (móvil) a un grid de 2, 3 o hasta 4 columnas de tarjetas.
+
+**4. Interacciones y Modales (Ej: Detalles de producto, Carrito)**
+✅ Se integrarán los modales/componentes estándar provistos por el MCP de Stitch, manteniendo la consistencia de UI en escritorio.
+
+## Proposed Changes
+
+A continuación se detallan los componentes principales que Claude Code deberá modificar, utilizando directamente los recursos del MCP de Stitch.
+
+### Core Layouts & Navigation
+
+#### [MODIFY] [apps/web/app/student/layout.tsx](file:///c:/Users/berri/Desktop/Universidad/Captzone/Aero/apps/web/app/student/layout.tsx)
+- Eliminar la clase restrictiva global `max-w-lg mx-auto`.
+- Integrar el componente de barra superior (Top Navbar) provisto por Stitch, configurándolo para que sea visible solo en `>= md`.
+
+#### [MODIFY] [apps/web/app/vendor/layout.tsx](file:///c:/Users/berri/Desktop/Universidad/Captzone/Aero/apps/web/app/vendor/layout.tsx)
+- Eliminar `max-w-lg mx-auto`.
+- Integrar el Top Navbar de vendedor para escritorio.
+
+#### [MODIFY] [apps/web/components/shared/StudentBottomNav.tsx](file:///c:/Users/berri/Desktop/Universidad/Captzone/Aero/apps/web/components/shared/StudentBottomNav.tsx) & [VendorBottomNav.tsx](file:///c:/Users/berri/Desktop/Universidad/Captzone/Aero/apps/web/components/shared/VendorBottomNav.tsx)
+- Añadir la clase `md:hidden` para asegurar que las barras inferiores solo existan en pantallas móviles.
+- **[NEW]** Importar o crear el `TopNavbar` extrayendo el diseño directamente del MCP de Stitch.
+
+### Authentication Views
+
+#### [MODIFY] [apps/web/app/(auth)/login/page.tsx](file:///c:/Users/berri/Desktop/Universidad/Captzone/Aero/apps/web/app/%28auth%29/login/page.tsx) y [register/page.tsx](file:///c:/Users/berri/Desktop/Universidad/Captzone/Aero/apps/web/app/%28auth%29/register/page.tsx)
+- Remover la restricción de ancho máximo de la vista base.
+- Implementar el layout "Split Screen" (`md:grid md:grid-cols-2`) insertando la estructura visual proveniente del MCP de Stitch.
+
+#### [MODIFY] [apps/web/app/page.tsx](file:///c:/Users/berri/Desktop/Universidad/Captzone/Aero/apps/web/app/page.tsx)
+- Adaptar para que la landing page (Splash) ocupe ancho completo usando `w-full` e integrando decoraciones web basadas en Stitch.
+
+### Core Views & Components
+
+#### [MODIFY] Vistas de Inicio ([student/home/page.tsx](file:///c:/Users/berri/Desktop/Universidad/Captzone/Aero/apps/web/app/student/home/page.tsx) y dashboard de vendor)
+- Expandir los contenedores (headers azules/naranjas) para aprovechar el ancho completo `w-full` en pantallas `md` o superiores.
+
+#### [MODIFY] Componentes de Listas ([VendorCardList.tsx](file:///c:/Users/berri/Desktop/Universidad/Captzone/Aero/apps/web/components/student/VendorCardList.tsx), `ProductCard`, etc.)
+- Agregar las directivas Tailwind para cumplir con la vista Grid Responsivo: `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6`.
+
+## Verification Plan
+
+### Verificación por Claude Code (Post-implementación)
+1. **Desktop Test:** Iniciar la app en modo escritorio. Verificar explícitamente el funcionamiento del nuevo Top Navbar, el diseño Split Screen del Login y el Grid Responsivo de vendedores/productos.
+2. **Mobile Test:** Redimensionar la ventana a vista móvil para comprobar que el antiguo formato `max-w-lg mx-auto` y el `BottomNav` se restablecen perfectamente, sin alteraciones.
+3. **Stitch Validation:** Confirmar que todos los componentes nuevos provienen de (o respetan el código de) Stitch MCP, manteniendo colores, sombras y tipografías (`font-display`, `font-body`) del proyecto Aero.

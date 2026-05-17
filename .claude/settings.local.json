@@ -1,11 +1,20 @@
 {
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "supabase"
-  ],
   "permissions": {
+    "allow": [
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__get_publishable_keys",
+      "Bash(taskkill /F /IM node.exe)",
+      "PowerShell(Stop-Process -Name node -Force -ErrorAction SilentlyContinue)",
+      "mcp__stitch__list_projects"
+    ],
     "additionalDirectories": [
       "c:\\Users\\berri\\Desktop\\Universidad\\Captzone\\Aero\\apps\\web\\app\\student\\vendor\\[id]"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }

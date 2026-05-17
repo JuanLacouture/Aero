@@ -23,20 +23,22 @@ export default async function StudentHomePage() {
   return (
     <div className="min-h-screen">
       {/* Blue header */}
-      <div className="bg-primary px-4 pt-12 pb-6">
-        <p className="text-primary-light text-xs font-body mb-0.5 tracking-wide uppercase">AERO · La Sabana</p>
-        <h1 className="text-white text-xl font-display font-bold">
-          {greeting}, {firstName} 👋
-        </h1>
-        <p className="text-blue-200 text-sm font-body mt-0.5">
-          {openVendors.length > 0
-            ? `${openVendors.length} vendedor${openVendors.length > 1 ? 'es' : ''} disponible${openVendors.length > 1 ? 's' : ''} ahora`
-            : 'No hay vendedores activos en este momento'}
-        </p>
+      <div className="bg-primary px-4 md:px-8 pt-8 pb-6">
+        <div className="max-w-7xl mx-auto">
+          <p className="text-primary-light text-xs font-body mb-0.5 tracking-wide uppercase">AERO · La Sabana</p>
+          <h1 className="text-white text-xl md:text-2xl font-display font-bold">
+            {greeting}, {firstName} 👋
+          </h1>
+          <p className="text-blue-200 text-sm font-body mt-0.5">
+            {openVendors.length > 0
+              ? `${openVendors.length} vendedor${openVendors.length > 1 ? 'es' : ''} disponible${openVendors.length > 1 ? 's' : ''} ahora`
+              : 'No hay vendedores activos en este momento'}
+          </p>
+        </div>
       </div>
 
       {/* Content */}
-      <div className="px-4 py-5">
+      <div className="px-4 md:px-8 py-5 max-w-7xl mx-auto">
         {openVendors.length > 0 && (
           <>
             <h2 className="text-base font-display font-bold text-text-primary mb-3">

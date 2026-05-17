@@ -72,7 +72,7 @@ export default function VendorCardList({
   }
 
   return (
-    <div className={cn('flex flex-col gap-3', dimmed && 'opacity-60')}>
+    <div className={cn('grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4', dimmed && 'opacity-60')}>
       {vendors.map(vendor => {
         const schedule = formatSchedule(vendor.schedule_start, vendor.schedule_end)
         const isFav = favMap.has(vendor.id)
