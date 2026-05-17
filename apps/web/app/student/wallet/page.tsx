@@ -93,7 +93,7 @@ export default function WalletPage() {
   return (
     <div className="min-h-screen bg-background pb-10">
       {/* Header azul con saldo */}
-      <div className="bg-primary px-4 pt-12 pb-6">
+      <div className="bg-gradient-to-br from-[#1A6BFF] to-[#0046CC] px-4 pt-12 pb-6">
         <div className="flex items-center gap-3 mb-5">
           <button onClick={() => router.back()} className="p-1.5 rounded-full bg-white/15">
             <ArrowLeft size={20} className="text-white" />
@@ -101,7 +101,7 @@ export default function WalletPage() {
           <h1 className="font-display font-bold text-white text-xl">Mi Saldo AERO</h1>
         </div>
 
-        <div className="bg-white/15 rounded-2xl px-5 py-5 text-center">
+        <div className="bg-white/15 border border-white/20 rounded-2xl px-5 py-5 text-center">
           <div className="flex items-center justify-center gap-2 mb-1">
             <Wallet size={18} className="text-primary-light" />
             <span className="text-primary-light text-sm font-body">Saldo disponible</span>
@@ -175,7 +175,7 @@ export default function WalletPage() {
       {/* Historial */}
       {transactions.length > 0 ? (
         <div className="mx-4 mt-4 bg-white rounded-card shadow-sm p-4">
-          <h2 className="font-display font-bold text-text-primary text-base mb-1">Historial</h2>
+          <h2 className="font-display font-bold text-text-primary text-base mb-3">Historial</h2>
           <div className="flex flex-col divide-y divide-border">
             {transactions.map(tx => {
               const isPositive = tx.type === 'topup' || tx.type === 'refund'
