@@ -3,13 +3,14 @@
 import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Eye, EyeOff, Mail, Lock, User, Store, GraduationCap, Camera } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, Store, GraduationCap, Camera, ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { compressImage } from '@/lib/utils/image-compression'
 import { motion } from 'framer-motion'
 
 export default function RegisterPage() {
   const [role, setRole] = useState<'student' | 'vendor'>('student')
+  const [step, setStep] = useState<1 | 2>(1)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -127,6 +128,86 @@ export default function RegisterPage() {
   const accentColor = isVendor ? 'bg-vendor' : 'bg-primary'
   const focusRing = isVendor ? 'focus:border-vendor focus:ring-vendor/20' : 'focus:border-primary focus:ring-primary/20'
 
+  if (step === 1) {
+    return (
+      <div className="min-h-screen flex flex-col md:flex-row">
+        {/* Left brand panel — desktop only */}
+        <div className="hidden md:flex md:w-1/2 lg:w-2/5 bg-primary flex-col items-center justify-center px-12 relative overflow-hidden">
+          <div className="absolute top-[-80px] right-[-80px] w-96 h-96 rounded-full bg-white/5 pointer-events-none" />
+          <div className="absolute bottom-[-60px] left-[-60px] w-64 h-64 rounded-full bg-white/5 pointer-events-none" />
+          <div className="relative z-10 text-center">
+            <p className="font-display font-extrabold italic text-white text-5xl tracking-tight mb-4">Aero</p>
+            <p className="text-blue-200 text-lg font-body">Pide · Paga · Recoge</p>
+            <p className="text-blue-300 text-sm font-body mt-3 max-w-xs mx-auto leading-relaxed">
+              Únete a la plataforma de comida del campus universitario
+            </p>
+            <p className="text-blue-300/50 text-xs font-body mt-16">Universidad de La Sabana · Capstone 2026-1</p>
+          </div>
+        </div>
+
+        {/* Right side */}
+        <div className="flex-1 flex flex-col bg-background md:items-center md:justify-center">
+          {/* Mobile header */}
+          <div className="bg-primary px-6 pt-16 pb-10 text-center md:hidden">
+            <p className="font-display font-extrabold italic text-white text-4xl tracking-tight mb-4">Aero</p>
+            <h1 className="text-white text-2xl font-display font-bold">Crear cuenta</h1>
+            <p className="text-blue-200 text-sm font-body mt-1">¿Cómo quieres usar Aero?</p>
+          </div>
+
+          <div className="flex-1 bg-background px-6 pt-6 pb-8 -mt-4 rounded-t-3xl md:flex-none md:w-full md:max-w-md md:mt-0 md:rounded-none md:bg-transparent md:px-8 md:py-8">
+            <div className="hidden md:block mb-8">
+              <h1 className="text-text-primary text-3xl font-display font-bold">Crear cuenta</h1>
+              <p className="text-text-secondary text-sm font-body mt-1.5">¿Cómo quieres usar Aero?</p>
+            </div>
+
+            <div className="flex flex-col gap-4 mt-2">
+              {/* Student card */}
+              <button
+                onClick={() => { setRole('student'); setStep(2) }}
+                className="w-full text-left bg-white border-2 border-border rounded-2xl p-5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] transition-all group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
+                    <GraduationCap size={24} className="text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display font-bold text-text-primary text-base">Soy estudiante</p>
+                    <p className="text-text-secondary text-sm font-body mt-0.5">Busca y pide comida de los negocios del campus</p>
+                  </div>
+                  <span className="text-text-disabled text-xl mt-1">›</span>
+                </div>
+              </button>
+
+              {/* Vendor card */}
+              <button
+                onClick={() => { setRole('vendor'); setStep(2) }}
+                className="w-full text-left bg-white border-2 border-border rounded-2xl p-5 hover:border-vendor/50 hover:shadow-md active:scale-[0.98] transition-all group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-vendor/10 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-vendor/15 transition-colors">
+                    <Store size={24} className="text-vendor" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display font-bold text-text-primary text-base">Soy vendedor</p>
+                    <p className="text-text-secondary text-sm font-body mt-0.5">Gestiona tu negocio y recibe pedidos en tiempo real</p>
+                  </div>
+                  <span className="text-text-disabled text-xl mt-1">›</span>
+                </div>
+              </button>
+            </div>
+
+            <p className="text-center text-text-secondary text-sm font-body mt-8">
+              ¿Ya tienes cuenta?{' '}
+              <Link href="/login" className="text-primary font-semibold">
+                Inicia sesión
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* Left brand panel — desktop only */}
@@ -169,7 +250,14 @@ export default function RegisterPage() {
       {/* Right side — full on mobile, half on desktop */}
       <div className="flex-1 flex flex-col bg-background md:items-center md:justify-center md:overflow-y-auto">
         {/* Mobile header */}
-        <div className={cn('px-6 pt-16 pb-10 text-center md:hidden', isVendor ? 'bg-vendor' : 'bg-primary')}>
+        <div className={cn('relative px-6 pt-16 pb-10 text-center md:hidden', isVendor ? 'bg-vendor' : 'bg-primary')}>
+          <button
+            onClick={() => setStep(1)}
+            aria-label="Volver al paso anterior"
+            className="absolute top-14 left-4 p-2 rounded-full bg-white/15"
+          >
+            <ArrowLeft size={18} className="text-white" />
+          </button>
           <p className="font-display font-extrabold italic text-white text-4xl tracking-tight mb-4">Aero</p>
           <h1 className="text-white text-2xl font-display font-bold">Crear cuenta</h1>
           <p className={cn('text-sm font-body mt-1', isVendor ? 'text-orange-200' : 'text-blue-200')}>
@@ -179,39 +267,29 @@ export default function RegisterPage() {
 
         {/* Form area */}
         <div className="flex-1 bg-background px-6 pt-6 pb-8 -mt-4 rounded-t-3xl md:flex-none md:w-full md:max-w-md md:mt-0 md:rounded-none md:bg-transparent md:px-8 md:py-8">
-          <div className="hidden md:block mb-6">
-            <h1 className="text-text-primary text-2xl font-display font-bold">Crear cuenta</h1>
-            <p className="text-text-secondary text-sm font-body mt-1">Únete a AERO hoy</p>
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 mb-6">
+            <button
+              type="button"
+              aria-label="Volver al paso anterior"
+              onClick={() => setStep(1)}
+              className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+            >
+              <ArrowLeft size={16} className="text-text-secondary" />
+            </button>
+            <div className="flex gap-1.5 mx-auto">
+              <div className="w-6 h-1.5 rounded-full bg-gray-200" />
+              <div className={cn('w-6 h-1.5 rounded-full', isVendor ? 'bg-vendor' : 'bg-primary')} />
+            </div>
           </div>
 
-          {/* Role toggle */}
-          <div className="relative bg-gray-100 rounded-xl p-1 flex mb-4">
-            <motion.div
-              layoutId="rolePill"
-              className="absolute top-1 bottom-1 rounded-lg bg-white shadow-sm"
-              style={{ width: 'calc(50% - 4px)', left: role === 'student' ? '4px' : 'calc(50%)' }}
-              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            />
-            <button
-              type="button"
-              onClick={() => setRole('student')}
-              className={`relative flex-1 py-2.5 text-sm font-display font-semibold rounded-lg transition-colors z-10 flex items-center justify-center gap-1.5 ${
-                role === 'student' ? 'text-primary' : 'text-gray-500'
-              }`}
-            >
-              <GraduationCap size={15} />
-              Estudiante
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole('vendor')}
-              className={`relative flex-1 py-2.5 text-sm font-display font-semibold rounded-lg transition-colors z-10 flex items-center justify-center gap-1.5 ${
-                role === 'vendor' ? 'text-vendor' : 'text-gray-500'
-              }`}
-            >
-              <Store size={15} />
-              Vendedor
-            </button>
+          <div className="mb-5">
+            <h1 className="text-text-primary text-2xl font-display font-bold">
+              {isVendor ? 'Datos de tu negocio' : 'Tus datos'}
+            </h1>
+            <p className="text-text-secondary text-sm font-body mt-1">
+              {isVendor ? 'Crea tu perfil de vendedor en Aero' : 'Completa tu perfil de estudiante'}
+            </p>
           </div>
 
           <form onSubmit={handleRegister} className="flex flex-col gap-4">
