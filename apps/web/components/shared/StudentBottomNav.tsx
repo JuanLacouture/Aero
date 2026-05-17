@@ -2,14 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Heart, ClipboardList, Wallet, User } from 'lucide-react'
+import { Home, Map, ClipboardList, Wallet, User } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { href: '/student/home', icon: Home, label: 'Inicio' },
-  { href: '/student/favorites', icon: Heart, label: 'Favoritos' },
-  { href: '/student/orders', icon: ClipboardList, label: 'Mis pedidos' },
+  { href: '/student/map', icon: Map, label: 'Mapa' },
+  { href: '/student/orders', icon: ClipboardList, label: 'Pedidos' },
   { href: '/student/wallet', icon: Wallet, label: 'Cartera' },
   { href: '/student/profile', icon: User, label: 'Perfil' },
 ]

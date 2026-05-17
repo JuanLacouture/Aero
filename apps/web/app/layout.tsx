@@ -27,6 +27,11 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'AERO',
   description: 'Plataforma digital de conexión alimentaria — Sabana Centro',
+  icons: {
+    icon: '/logo-aero.jpg',
+    shortcut: '/logo-aero.jpg',
+    apple: '/logo-aero.jpg',
+  },
 }
 
 export const viewport: Viewport = {
