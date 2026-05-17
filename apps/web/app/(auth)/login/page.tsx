@@ -216,23 +216,29 @@ export default function LoginPage() {
           <p className="text-blue-300/50 text-xs font-body mt-16">
             Universidad de La Sabana · Capstone 2026-1
           </p>
-          <div className="mt-12 bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-5 text-left max-w-xs mx-auto">
-            <div className="flex gap-0.5 mb-3">
-              {[1,2,3,4,5].map(i => (
-                <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill="#FFD60A"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-              ))}
+          <div className="mt-10 bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-5 text-left max-w-xs mx-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex gap-0.5">
+                {[1,2,3,4,5].map(i => (
+                  <svg key={i} width="13" height="13" viewBox="0 0 24 24" fill="#FFD60A"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                ))}
+              </div>
+              <span className="text-yellow-300 text-xs font-body">4.9 · 200+ reseñas</span>
             </div>
             <p className="text-white/90 text-sm font-body leading-relaxed italic">
-              "Pedí mi almuerzo entre clases y estaba listo en 15 minutos"
+              "Pedí mi almuerzo entre clases y estaba listo en 15 minutos. Increíble."
             </p>
-            <p className="text-blue-300 text-xs font-body mt-3 font-semibold">
-              — María, Ingeniería Industrial
-            </p>
+            <div className="flex items-center gap-2 mt-4">
+              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                <span className="text-white text-xs font-bold">M</span>
+              </div>
+              <p className="text-blue-200 text-xs font-body font-semibold">María · Ingeniería Industrial</p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Right side — full on mobile, half on desktop */}
+      {/* Right side */}
       <div className="flex-1 flex flex-col bg-background md:items-center md:justify-center">
         {/* Mobile header */}
         <div className="bg-primary px-6 pt-16 pb-10 text-center md:hidden">
@@ -242,10 +248,10 @@ export default function LoginPage() {
         </div>
 
         {/* Form area */}
-        <div className="flex-1 bg-background px-6 pt-6 pb-8 -mt-4 rounded-t-3xl md:flex-none md:w-full md:max-w-md md:mt-0 md:rounded-none md:bg-transparent md:px-8 md:py-0">
+        <div className="flex-1 bg-background px-6 pt-6 pb-8 -mt-4 rounded-t-3xl md:flex-none md:w-full md:max-w-[420px] md:mt-0 md:rounded-2xl md:bg-white md:shadow-lg md:border md:border-border/60 md:px-10 md:py-10">
           <div className="hidden md:block mb-8">
-            <h1 className="text-text-primary text-2xl font-display font-bold">Bienvenido de nuevo</h1>
-            <p className="text-text-secondary text-sm font-body mt-1">Inicia sesión para continuar</p>
+            <h1 className="text-text-primary text-3xl font-display font-bold">Bienvenido de nuevo</h1>
+            <p className="text-text-secondary text-sm font-body mt-1.5">Inicia sesión para continuar en Aero</p>
           </div>
           <Suspense>
             <LoginForm />
