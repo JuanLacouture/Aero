@@ -21,7 +21,7 @@ export default function StudentTopNav() {
     <nav className="hidden md:flex fixed top-0 left-0 right-0 z-50 h-16 items-center px-6 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
       {/* Logo */}
       <Link href="/student/home" className="shrink-0 mr-10">
-        <Image src="/logo-aero.png" alt="Aero" width={80} height={32} className="h-7 w-auto" />
+        <Image src="/logo-aero.jpg" alt="Aero" width={80} height={32} className="h-7 w-auto" />
       </Link>
 
       {/* Nav links */}

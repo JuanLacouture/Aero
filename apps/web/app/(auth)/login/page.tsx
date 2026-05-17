@@ -202,7 +202,7 @@ export default function LoginPage() {
         <div className="absolute top-1/3 left-[-40px] w-32 h-32 rounded-full bg-white/5 pointer-events-none" />
         <div className="relative z-10 text-center">
           <Image
-            src="/logo-aero.png"
+            src="/logo-aero.jpg"
             alt="Aero"
             width={160}
             height={64}
@@ -237,7 +237,7 @@ export default function LoginPage() {
         {/* Mobile header */}
         <div className="bg-primary px-6 pt-16 pb-10 text-center md:hidden">
           <Image
-            src="/logo-aero.png"
+            src="/logo-aero.jpg"
             alt="Aero"
             width={100}
             height={40}

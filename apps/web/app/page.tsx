@@ -21,7 +21,7 @@ export default function LandingPage() {
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Image src="/logo-aero.png" alt="Aero" width={80} height={32} className="h-8 w-auto" priority />
+          <Image src="/logo-aero.jpg" alt="Aero" width={80} height={32} className="h-8 w-auto" priority />
           <div className="flex items-center gap-3">
             <Link
               href="/login"
@@ -258,7 +258,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="bg-gray-900 py-10">
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <Image src="/logo-aero.png" alt="Aero" width={72} height={28} className="h-7 w-auto brightness-0 invert opacity-80" />
+          <Image src="/logo-aero.jpg" alt="Aero" width={72} height={28} className="h-7 w-auto brightness-0 invert opacity-80" />
           <p className="text-gray-500 text-sm font-body text-center">
             © 2026 Universidad de La Sabana · Capstone 2026-1
           </p>
