@@ -239,7 +239,7 @@ export default function RegisterPage() {
             <p className="text-white/90 text-sm font-body leading-relaxed italic">
               "Ya llevamos un semestre usando Aero — mis ventas subieron un 40%"
             </p>
-            <p className="text-blue-300 text-xs font-body mt-3 font-semibold">
+            <p className={cn('text-xs font-body mt-3 font-semibold', isVendor ? 'text-orange-300' : 'text-blue-300')}>
               — Carlos, Café Campus
             </p>
           </div>
