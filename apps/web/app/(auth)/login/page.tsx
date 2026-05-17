@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
@@ -20,6 +19,14 @@ function LoginForm() {
     if (searchParams.get('error') === 'oauth_failed') {
       setError('No se pudo completar el inicio de sesión. Intenta con email y contraseña.')
     }
+    // Redirect if already logged in
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('profiles').select('role').eq('id', user.id).single().then(({ data }) => {
+        window.location.href = data?.role === 'vendor' ? '/vendor/dashboard' : '/student/home'
+      })
+    })
   }, [searchParams])
 
   async function handleLogin(e: React.FormEvent) {
@@ -201,14 +208,7 @@ export default function LoginPage() {
         <div className="absolute bottom-[-60px] left-[-60px] w-64 h-64 rounded-full bg-white/5 pointer-events-none" />
         <div className="absolute top-1/3 left-[-40px] w-32 h-32 rounded-full bg-white/5 pointer-events-none" />
         <div className="relative z-10 text-center">
-          <Image
-            src="/logo-aero.jpg"
-            alt="Aero"
-            width={160}
-            height={64}
-            className="h-14 w-auto mx-auto mb-6 brightness-0 invert"
-            priority
-          />
+          <p className="font-display font-extrabold italic text-white text-5xl tracking-tight mb-6">Aero</p>
           <p className="text-blue-200 text-lg font-body mt-3">Pide · Paga · Recoge</p>
           <p className="text-blue-300 text-sm font-body mt-4 max-w-xs mx-auto leading-relaxed">
             Tu comida favorita del campus, lista cuando la necesites
@@ -236,14 +236,7 @@ export default function LoginPage() {
       <div className="flex-1 flex flex-col bg-background md:items-center md:justify-center">
         {/* Mobile header */}
         <div className="bg-primary px-6 pt-16 pb-10 text-center md:hidden">
-          <Image
-            src="/logo-aero.jpg"
-            alt="Aero"
-            width={100}
-            height={40}
-            className="h-10 w-auto mx-auto mb-4"
-            priority
-          />
+          <p className="font-display font-extrabold italic text-white text-4xl tracking-tight mb-4">Aero</p>
           <h1 className="text-white text-2xl font-display font-bold">Bienvenido de nuevo</h1>
           <p className="text-blue-200 text-sm font-body mt-1">Inicia sesión para continuar</p>
         </div>

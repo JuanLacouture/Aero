@@ -3,7 +3,6 @@
 import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Eye, EyeOff, Mail, Lock, User, Store, GraduationCap, Camera } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { compressImage } from '@/lib/utils/image-compression'
@@ -139,14 +138,7 @@ export default function RegisterPage() {
         <div className="absolute bottom-[-60px] left-[-60px] w-64 h-64 rounded-full bg-white/5 pointer-events-none" />
         <div className="absolute top-1/3 left-[-40px] w-32 h-32 rounded-full bg-white/5 pointer-events-none" />
         <div className="relative z-10 text-center">
-          <Image
-            src="/logo-aero.jpg"
-            alt="Aero"
-            width={160}
-            height={64}
-            className="h-14 w-auto mx-auto mb-6 brightness-0 invert"
-            priority
-          />
+          <p className="font-display font-extrabold italic text-white text-5xl tracking-tight mb-6">Aero</p>
           <p className={cn('text-lg font-body mt-3', isVendor ? 'text-orange-200' : 'text-blue-200')}>
             {isVendor ? 'Vende · Gestiona · Crece' : 'Pide · Paga · Recoge'}
           </p>
@@ -178,14 +170,7 @@ export default function RegisterPage() {
       <div className="flex-1 flex flex-col bg-background md:items-center md:justify-center md:overflow-y-auto">
         {/* Mobile header */}
         <div className={cn('px-6 pt-16 pb-10 text-center md:hidden', isVendor ? 'bg-vendor' : 'bg-primary')}>
-          <Image
-            src="/logo-aero.jpg"
-            alt="Aero"
-            width={100}
-            height={40}
-            className="h-10 w-auto mx-auto mb-4"
-            priority
-          />
+          <p className="font-display font-extrabold italic text-white text-4xl tracking-tight mb-4">Aero</p>
           <h1 className="text-white text-2xl font-display font-bold">Crear cuenta</h1>
           <p className={cn('text-sm font-body mt-1', isVendor ? 'text-orange-200' : 'text-blue-200')}>
             Únete a AERO hoy
@@ -210,19 +195,21 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => setRole('student')}
-              className={`relative flex-1 py-2 text-sm font-display font-semibold rounded-lg transition-colors z-10 ${
-                role === 'student' ? 'text-text-primary' : 'text-text-secondary'
+              className={`relative flex-1 py-2.5 text-sm font-display font-semibold rounded-lg transition-colors z-10 flex items-center justify-center gap-1.5 ${
+                role === 'student' ? 'text-primary' : 'text-gray-500'
               }`}
             >
+              <GraduationCap size={15} />
               Estudiante
             </button>
             <button
               type="button"
               onClick={() => setRole('vendor')}
-              className={`relative flex-1 py-2 text-sm font-display font-semibold rounded-lg transition-colors z-10 ${
-                role === 'vendor' ? 'text-text-primary' : 'text-text-secondary'
+              className={`relative flex-1 py-2.5 text-sm font-display font-semibold rounded-lg transition-colors z-10 flex items-center justify-center gap-1.5 ${
+                role === 'vendor' ? 'text-vendor' : 'text-gray-500'
               }`}
             >
+              <Store size={15} />
               Vendedor
             </button>
           </div>

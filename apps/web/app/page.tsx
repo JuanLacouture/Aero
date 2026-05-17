@@ -86,16 +86,16 @@ export default function LandingPage() {
             </motion.div>
 
             {/* Stats */}
-            <motion.div variants={fadeUp} className="flex items-center gap-4 pt-2">
+            <motion.div variants={fadeUp} className="flex items-center gap-4 pt-2 flex-wrap">
               {[
-                { value: '500+', label: 'estudiantes' },
-                { value: '12', label: 'vendedores' },
+                { value: '2,400+', label: 'estudiantes' },
+                { value: '40+', label: 'vendedores' },
                 { value: '4.8★', label: 'promedio' },
-              ].map(stat => (
+              ].map((stat, i) => (
                 <div key={stat.label} className="flex items-center gap-1.5">
                   <span className="text-sm font-display font-bold text-gray-900">{stat.value}</span>
                   <span className="text-sm text-gray-400 font-body">{stat.label}</span>
-                  <span className="text-gray-200 ml-2">·</span>
+                  {i < 2 && <span className="text-gray-200 ml-2">·</span>}
                 </div>
               ))}
             </motion.div>
@@ -112,32 +112,48 @@ export default function LandingPage() {
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 rounded-[3rem] blur-3xl scale-110" />
 
             {/* Phone */}
-            <div className="relative w-64 bg-white rounded-[2.5rem] border-8 border-gray-900 shadow-2xl overflow-hidden">
+            <div className="relative w-72 bg-white rounded-[2.5rem] border-[10px] border-gray-900 shadow-[0_32px_64px_rgba(0,0,0,0.25)] overflow-hidden">
+              {/* Notch */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 bg-gray-900 rounded-b-2xl z-10" />
               {/* Status bar */}
-              <div className="bg-primary px-4 pt-3 pb-4">
-                <p className="text-white/70 text-[10px] font-body">Buenos días, María 👋</p>
-                <p className="text-white text-sm font-display font-bold mt-0.5">3 vendedores disponibles</p>
+              <div className="bg-gradient-to-br from-primary to-primary-dark px-4 pt-6 pb-5">
+                <p className="text-white/70 text-[10px] font-body uppercase tracking-widest">AERO · La Sabana</p>
+                <p className="text-white text-base font-display font-extrabold mt-1">Buenos días, María 👋</p>
+                <p className="text-blue-200 text-[11px] font-body mt-0.5 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                  5 vendedores disponibles
+                </p>
               </div>
-              {/* Mock cards */}
-              {['Café Campus', 'Arepas y Más', 'Sandwich Co.'].map((name, i) => (
-                <div key={name} className="flex items-center gap-3 px-3 py-2.5 border-b border-gray-50 last:border-0">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
-                    i === 0 ? 'bg-amber-100' : i === 1 ? 'bg-green-100' : 'bg-blue-100'
-                  }`}>
-                    {i === 0 ? '☕' : i === 1 ? '🫓' : '🥪'}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-display font-semibold text-gray-900">{name}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <Star size={9} className="text-yellow-400 fill-yellow-400" />
-                      <span className="text-[10px] text-gray-400">4.{8 - i}</span>
+              {/* Search bar */}
+              <div className="mx-3 -mt-3 bg-white rounded-xl shadow-card px-3 py-2 flex items-center gap-2 mb-2">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <span className="text-gray-400 text-[11px] font-body">Buscar vendedores...</span>
+              </div>
+              {/* Mock cards grid */}
+              <div className="grid grid-cols-2 gap-2 px-3 pb-4">
+                {[
+                  { name: 'Café Campus', emoji: '☕', color: 'from-amber-400 to-orange-400', rating: '4.9', tag: 'Abierto' },
+                  { name: 'Arepas y Más', emoji: '🫓', color: 'from-green-400 to-emerald-500', rating: '4.8', tag: 'Abierto' },
+                  { name: 'Sandwich Co.', emoji: '🥪', color: 'from-blue-400 to-indigo-400', rating: '4.7', tag: 'Abierto' },
+                  { name: 'Jugos Fresh', emoji: '🧃', color: 'from-pink-400 to-rose-400', rating: '4.6', tag: 'Cerrado' },
+                ].map((v) => (
+                  <div key={v.name} className="bg-white rounded-xl shadow-card overflow-hidden">
+                    <div className={`h-16 bg-gradient-to-br ${v.color} flex items-center justify-center text-2xl relative`}>
+                      {v.emoji}
+                      <span className={`absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${
+                        v.tag === 'Abierto' ? 'bg-green-500 text-white' : 'bg-gray-800/60 text-white'
+                      }`}>{v.tag}</span>
+                    </div>
+                    <div className="px-2 py-1.5">
+                      <p className="text-[10px] font-display font-bold text-gray-900 truncate">{v.name}</p>
+                      <div className="flex items-center gap-0.5 mt-0.5">
+                        <Star size={8} className="text-yellow-400 fill-yellow-400" />
+                        <span className="text-[9px] text-gray-400">{v.rating}</span>
+                      </div>
                     </div>
                   </div>
-                  <span className="text-[10px] bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">
-                    Abierto
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
             {/* Floating badges */}
@@ -258,7 +274,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="bg-gray-900 py-10">
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <Image src="/logo-aero.jpg" alt="Aero" width={72} height={28} className="h-7 w-auto brightness-0 invert opacity-80" />
+          <p className="font-display font-extrabold italic text-white/80 text-2xl tracking-tight">Aero</p>
           <p className="text-gray-500 text-sm font-body text-center">
             © 2026 Universidad de La Sabana · Capstone 2026-1
           </p>
