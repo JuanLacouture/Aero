@@ -3,9 +3,11 @@
 import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Eye, EyeOff, Mail, Lock, User, Store, GraduationCap, Camera } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { compressImage } from '@/lib/utils/image-compression'
+import { motion } from 'framer-motion'
 
 export default function RegisterPage() {
   const [role, setRole] = useState<'student' | 'vendor'>('student')
@@ -137,10 +139,14 @@ export default function RegisterPage() {
         <div className="absolute bottom-[-60px] left-[-60px] w-64 h-64 rounded-full bg-white/5 pointer-events-none" />
         <div className="absolute top-1/3 left-[-40px] w-32 h-32 rounded-full bg-white/5 pointer-events-none" />
         <div className="relative z-10 text-center">
-          <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl">
-            <span className={cn('text-4xl font-display font-extrabold', isVendor ? 'text-vendor' : 'text-primary')}>A</span>
-          </div>
-          <h1 className="text-white text-4xl font-display font-extrabold tracking-tight">Aero</h1>
+          <Image
+            src="/logo-aero.png"
+            alt="Aero"
+            width={160}
+            height={64}
+            className="h-14 w-auto mx-auto mb-6 brightness-0 invert"
+            priority
+          />
           <p className={cn('text-lg font-body mt-3', isVendor ? 'text-orange-200' : 'text-blue-200')}>
             {isVendor ? 'Vende · Gestiona · Crece' : 'Pide · Paga · Recoge'}
           </p>
@@ -152,6 +158,19 @@ export default function RegisterPage() {
           <p className={cn('text-xs font-body mt-16 opacity-50', isVendor ? 'text-orange-300' : 'text-blue-300')}>
             Universidad de La Sabana · Capstone 2026-1
           </p>
+          <div className="mt-12 bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-5 text-left max-w-xs mx-auto">
+            <div className="flex gap-0.5 mb-3">
+              {[1,2,3,4,5].map(i => (
+                <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill="#FFD60A"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              ))}
+            </div>
+            <p className="text-white/90 text-sm font-body leading-relaxed italic">
+              "Ya llevamos un semestre usando Aero — mis ventas subieron un 40%"
+            </p>
+            <p className="text-blue-300 text-xs font-body mt-3 font-semibold">
+              — Carlos, Café Campus
+            </p>
+          </div>
         </div>
       </div>
 
@@ -159,9 +178,14 @@ export default function RegisterPage() {
       <div className="flex-1 flex flex-col bg-background md:items-center md:justify-center md:overflow-y-auto">
         {/* Mobile header */}
         <div className={cn('px-6 pt-16 pb-10 text-center md:hidden', isVendor ? 'bg-vendor' : 'bg-primary')}>
-          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow">
-            <span className={cn('text-2xl font-display font-extrabold', isVendor ? 'text-vendor' : 'text-primary')}>A</span>
-          </div>
+          <Image
+            src="/logo-aero.png"
+            alt="Aero"
+            width={100}
+            height={40}
+            className="h-10 w-auto mx-auto mb-4"
+            priority
+          />
           <h1 className="text-white text-2xl font-display font-bold">Crear cuenta</h1>
           <p className={cn('text-sm font-body mt-1', isVendor ? 'text-orange-200' : 'text-blue-200')}>
             Únete a AERO hoy
@@ -176,27 +200,29 @@ export default function RegisterPage() {
           </div>
 
           {/* Role toggle */}
-          <div className="flex gap-2 mb-5 p-1 bg-white border border-border rounded-xl">
+          <div className="relative bg-gray-100 rounded-xl p-1 flex mb-4">
+            <motion.div
+              layoutId="rolePill"
+              className="absolute top-1 bottom-1 rounded-lg bg-white shadow-sm"
+              style={{ width: 'calc(50% - 4px)', left: role === 'student' ? '4px' : 'calc(50%)' }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            />
             <button
               type="button"
               onClick={() => setRole('student')}
-              className={cn(
-                'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-display font-semibold transition-all',
-                role === 'student' ? 'bg-primary text-white shadow-sm' : 'text-text-secondary'
-              )}
+              className={`relative flex-1 py-2 text-sm font-display font-semibold rounded-lg transition-colors z-10 ${
+                role === 'student' ? 'text-text-primary' : 'text-text-secondary'
+              }`}
             >
-              <GraduationCap size={16} />
               Estudiante
             </button>
             <button
               type="button"
               onClick={() => setRole('vendor')}
-              className={cn(
-                'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-display font-semibold transition-all',
-                role === 'vendor' ? 'bg-vendor text-white shadow-sm' : 'text-text-secondary'
-              )}
+              className={`relative flex-1 py-2 text-sm font-display font-semibold rounded-lg transition-colors z-10 ${
+                role === 'vendor' ? 'text-text-primary' : 'text-text-secondary'
+              }`}
             >
-              <Store size={16} />
               Vendedor
             </button>
           </div>
