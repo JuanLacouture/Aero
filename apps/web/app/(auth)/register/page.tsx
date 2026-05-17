@@ -3,10 +3,9 @@
 import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Eye, EyeOff, Mail, Lock, User, Store, GraduationCap, Camera, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, Store, GraduationCap, Camera, ArrowLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { compressImage } from '@/lib/utils/image-compression'
-import { motion } from 'framer-motion'
 
 export default function RegisterPage() {
   const [role, setRole] = useState<'student' | 'vendor'>('student')
@@ -174,7 +173,7 @@ export default function RegisterPage() {
                     <p className="font-display font-bold text-text-primary text-base">Soy estudiante</p>
                     <p className="text-text-secondary text-sm font-body mt-0.5">Busca y pide comida de los negocios del campus</p>
                   </div>
-                  <span className="text-text-disabled text-xl mt-1">›</span>
+                  <ChevronRight size={18} aria-hidden="true" className="text-text-disabled mt-1 shrink-0" />
                 </div>
               </button>
 
@@ -191,7 +190,7 @@ export default function RegisterPage() {
                     <p className="font-display font-bold text-text-primary text-base">Soy vendedor</p>
                     <p className="text-text-secondary text-sm font-body mt-0.5">Gestiona tu negocio y recibe pedidos en tiempo real</p>
                   </div>
-                  <span className="text-text-disabled text-xl mt-1">›</span>
+                  <ChevronRight size={18} aria-hidden="true" className="text-text-disabled mt-1 shrink-0" />
                 </div>
               </button>
             </div>
@@ -294,12 +293,13 @@ export default function RegisterPage() {
 
           <form onSubmit={handleRegister} className="flex flex-col gap-4">
             <div>
-              <label className="text-text-secondary text-xs font-display font-semibold uppercase tracking-wider mb-1.5 block">
+              <label htmlFor="reg-fullName" className="text-text-secondary text-xs font-display font-semibold uppercase tracking-wider mb-1.5 block">
                 Nombre completo
               </label>
               <div className="relative">
                 <User size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
                 <input
+                  id="reg-fullName"
                   type="text"
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
@@ -317,12 +317,13 @@ export default function RegisterPage() {
             {isVendor && (
               <>
                 <div>
-                  <label className="text-text-secondary text-xs font-display font-semibold uppercase tracking-wider mb-1.5 block">
+                  <label htmlFor="reg-businessName" className="text-text-secondary text-xs font-display font-semibold uppercase tracking-wider mb-1.5 block">
                     Nombre del negocio
                   </label>
                   <div className="relative">
                     <Store size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
                     <input
+                      id="reg-businessName"
                       type="text"
                       value={businessName}
                       onChange={e => setBusinessName(e.target.value)}
@@ -334,10 +335,11 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label className="text-text-secondary text-xs font-display font-semibold uppercase tracking-wider mb-1.5 block">
+                  <label htmlFor="reg-cover" className="text-text-secondary text-xs font-display font-semibold uppercase tracking-wider mb-1.5 block">
                     Foto del restaurante <span className="normal-case font-normal">(opcional)</span>
                   </label>
                   <input
+                    id="reg-cover"
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
@@ -371,12 +373,13 @@ export default function RegisterPage() {
             )}
 
             <div>
-              <label className="text-text-secondary text-xs font-display font-semibold uppercase tracking-wider mb-1.5 block">
+              <label htmlFor="reg-email" className="text-text-secondary text-xs font-display font-semibold uppercase tracking-wider mb-1.5 block">
                 Correo electrónico
               </label>
               <div className="relative">
                 <Mail size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
                 <input
+                  id="reg-email"
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -392,12 +395,13 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="text-text-secondary text-xs font-display font-semibold uppercase tracking-wider mb-1.5 block">
+              <label htmlFor="reg-password" className="text-text-secondary text-xs font-display font-semibold uppercase tracking-wider mb-1.5 block">
                 Contraseña
               </label>
               <div className="relative">
                 <Lock size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
                 <input
+                  id="reg-password"
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -412,10 +416,11 @@ export default function RegisterPage() {
                 />
                 <button
                   type="button"
+                  aria-label={showPw ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   onClick={() => setShowPw(!showPw)}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-secondary"
                 >
-                  {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
+                  {showPw ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
                 </button>
               </div>
             </div>
