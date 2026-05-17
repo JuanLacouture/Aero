@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { Clock, ArrowLeft } from 'lucide-react'
 
@@ -23,11 +24,13 @@ export default function VendorUnavailable({ vendor }: Props) {
       {/* Cover with blur overlay */}
       <div className="relative h-56 overflow-hidden">
         {vendor.cover_image_url ? (
-          <img
+          <Image
             src={vendor.cover_image_url}
             alt=""
             aria-hidden="true"
-            className="w-full h-full object-cover blur-sm scale-105 opacity-60"
+            fill
+            className="object-cover blur-sm scale-105 opacity-60"
+            unoptimized
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-200" />

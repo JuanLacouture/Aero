@@ -4,6 +4,7 @@ import VendorUnavailable from '@/components/student/VendorUnavailable'
 
 export default async function VendorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  // Auth guard handled by middleware — only authenticated students reach this page
   const supabase = await createClient()
 
   const { data: vendor } = await supabase
@@ -18,5 +19,6 @@ export default async function VendorPage({ params }: { params: Promise<{ id: str
     redirect(`/student/vendor/${id}/menu`)
   }
 
+  // vendor.is_open is false | null at this point — redirect handles the true case above
   return <VendorUnavailable vendor={vendor} />
 }
