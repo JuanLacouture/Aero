@@ -230,18 +230,33 @@ Sub-tareas en orden de impacto:
 #### Bloque 4 — Pruebas Unitarias con Vitest
 **Esfuerzo estimado:** ~3 horas
 
-Archivos a crear:
-- `vitest.config.ts` — Vitest + React Testing Library
-- `__tests__/api/orders.test.ts` — crear pedido, estados, código entrega
-- `__tests__/api/wallet.test.ts` — topup, monto negativo
-- `__tests__/utils/deliveryCode.test.ts` — determinismo del código
+**Framework:** Jest + next/jest  
+**Total:** 67 pruebas · 4 suites · ~2s de ejecución
 
-En `package.json`:
+Se configuró Jest con soporte nativo para Next.js (alias `@/`, transformación TypeScript) y se escribieron pruebas unitarias para los módulos de lógica de negocio más críticos.
+
+### Archivos creados
+
+| Archivo | Tests | Qué cubre |
+|---|---|---|
+| `__tests__/stores/cart.test.ts` | 16 | Store Zustand: addItem, cambio de vendor, updateQuantity, removeItem, total, count, clear |
+| `__tests__/validations/product.test.ts` | 17 | Schemas Zod: nombre (mín 2, máx 255), precio positivo, descripción máx 500, stock entero positivo |
+| `__tests__/api/order-transitions.test.ts` | 22 | Máquina de estados del pedido, cálculo de total, validación de capacidad de franjas horarias (30%) |
+| `__tests__/api/ratings-schema.test.ts` | 12 | Schema de calificaciones: UUID válido, puntuaciones 1–5 enteras, comentario máx 500 chars |
+
+### Configuración
+
+`jest.config.js` usando `next/jest` para compatibilidad con el App Router.  
+Scripts agregados en `package.json`:
+
 ```json
-"scripts": {
-  "test": "vitest run",
-  "test:watch": "vitest"
-}
+"test": "jest",
+"test:coverage": "jest --coverage"
+
+Cómo correr los tests:
+
+cd apps/web
+npm test
 ```
 
 ---
