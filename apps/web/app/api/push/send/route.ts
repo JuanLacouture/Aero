@@ -2,13 +2,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT ?? 'mailto:aero@unisabana.edu.co',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '',
-  process.env.VAPID_PRIVATE_KEY ?? ''
-)
-
 export async function POST(request: NextRequest) {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT ?? 'mailto:aero@unisabana.edu.co',
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '',
+    process.env.VAPID_PRIVATE_KEY ?? ''
+  )
   const body = await request.json()
   const { user_id, title, body: msgBody, url } = body
 
