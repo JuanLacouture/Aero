@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Plus_Jakarta_Sans, DM_Sans, JetBrains_Mono } from 'next/font/google'
 import { cn } from '@/lib/utils'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -55,7 +57,11 @@ export default function RootLayout({
         jetbrainsMono.variable
       )}
     >
-      <body className="font-body antialiased">{children}</body>
+      <body className="font-body antialiased">
+        {children}
+        <Analytics />
+        <SpeedInsights />
+      </body>
     </html>
   )
 }
