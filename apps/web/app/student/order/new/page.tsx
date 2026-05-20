@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 const fmt = (n: number) => `$${Math.round(n).toLocaleString('es-CO')}`
 
 type DeliveryPoint = { id: string; name: string; description: string | null; security_level: string | null }
-type TimeSlot = { id: string; slot_start: string; slot_end: string; delivery_point_id: string; current_count: number | null; max_capacity: number | null }
+type TimeSlot = { id: string; slot_start: string; slot_end: string; date: string; delivery_point_id: string; current_count: number | null; max_capacity: number | null }
 type Step = 'cart' | 'timeslot' | 'payment' | 'receipt'
 
 const PAYMENT_METHODS = [
@@ -76,7 +76,20 @@ export default function NewOrderPage() {
     })
   }, [step])
 
-  const filteredSlots = slots.filter(s => s.delivery_point_id === selectedPoint)
+  const filteredSlots = slots.filter(s => {
+    if (s.delivery_point_id !== selectedPoint) return false
+    // Hide past slots for today
+    const now = new Date()
+    const todayStr = now.toISOString().split('T')[0]
+    const slotDate = s.date ?? todayStr
+    if (slotDate === todayStr) {
+      const [h, m] = s.slot_end.split(':').map(Number)
+      const slotEnd = new Date(now)
+      slotEnd.setHours(h, m, 0, 0)
+      if (slotEnd <= now) return false
+    }
+    return true
+  })
   const grouped = filteredSlots.reduce<Record<string, TimeSlot[]>>((acc, s) => {
     const h = s.slot_start.slice(0, 2)
     acc[h] = [...(acc[h] ?? []), s]

@@ -64,7 +64,7 @@ function LoginForm() {
     const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin}/callback`,
+        redirectTo: `${window.location.origin}/callback`,
         skipBrowserRedirect: true,
         ...(provider === 'azure' && { scopes: 'openid email profile' }),
       },
