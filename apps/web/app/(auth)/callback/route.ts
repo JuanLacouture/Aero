@@ -41,7 +41,8 @@ export async function GET(request: NextRequest) {
       })
       await supabase.from('students').insert({ id: user.id })
 
-      return NextResponse.redirect(`${origin}/student/home`)
+      // New user — must accept privacy policy before entering the app
+      return NextResponse.redirect(`${origin}/onboarding/privacy`)
     }
 
     // Existing vendor

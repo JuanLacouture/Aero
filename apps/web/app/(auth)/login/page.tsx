@@ -19,6 +19,9 @@ function LoginForm() {
     if (searchParams.get('error') === 'oauth_failed') {
       setError('No se pudo completar el inicio de sesión. Intenta con email y contraseña.')
     }
+    if (searchParams.get('rejected') === 'true') {
+      setError('Debes aceptar la Política de Protección de Datos Personales para usar AERO.')
+    }
     // Redirect if already logged in
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {

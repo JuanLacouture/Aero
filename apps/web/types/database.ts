@@ -347,6 +347,9 @@ export type Database = {
           id: string
           is_active: boolean | null
           phone: string | null
+          privacy_accepted: boolean
+          privacy_accepted_at: string | null
+          privacy_policy_version: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
         }
@@ -358,6 +361,9 @@ export type Database = {
           id: string
           is_active?: boolean | null
           phone?: string | null
+          privacy_accepted?: boolean
+          privacy_accepted_at?: string | null
+          privacy_policy_version?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }
@@ -369,6 +375,9 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           phone?: string | null
+          privacy_accepted?: boolean
+          privacy_accepted_at?: string | null
+          privacy_policy_version?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }

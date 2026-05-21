@@ -28,24 +28,35 @@ export async function updateSession(request: NextRequest) {
   const isStudentRoute = path.startsWith('/student')
   const isVendorRoute = path.startsWith('/vendor')
   const isAuthPage = path === '/login' || path === '/register'
+  const isPrivacyPage = path === '/onboarding/privacy'
 
-  if (!user && (isStudentRoute || isVendorRoute)) {
+  if (!user && (isStudentRoute || isVendorRoute || isPrivacyPage)) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
   if (user) {
-    let role = user.user_metadata?.role as 'student' | 'vendor' | undefined
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('role, privacy_accepted')
+      .eq('id', user.id)
+      .single()
 
-    if (!role) {
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-      role = (prof?.role as 'student' | 'vendor') ?? 'student'
+    const role = (prof?.role ?? 'student') as 'student' | 'vendor'
+    const privacyAccepted = prof?.privacy_accepted ?? false
+
+    // Redirect unauthenticated auth pages
+    if (isAuthPage) {
+      return NextResponse.redirect(new URL(role === 'vendor' ? '/vendor/dashboard' : '/student/home', request.url))
     }
 
-    if (isAuthPage) {
+    // Privacy gate: authenticated user who hasn't accepted yet → /onboarding/privacy
+    // Only apply on protected routes to avoid interfering with API routes
+    if (!privacyAccepted && !isPrivacyPage && (isStudentRoute || isVendorRoute)) {
+      return NextResponse.redirect(new URL('/onboarding/privacy', request.url))
+    }
+
+    // If already accepted and trying to access the privacy page, redirect to home
+    if (privacyAccepted && isPrivacyPage) {
       return NextResponse.redirect(new URL(role === 'vendor' ? '/vendor/dashboard' : '/student/home', request.url))
     }
 
