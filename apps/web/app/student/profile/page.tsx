@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/utils/image-compression'
-import { ArrowLeft, Bell, Camera, ChevronRight, LogOut, Wallet, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Bell, Camera, ChevronRight, LogOut, Wallet, CheckCircle, MessageSquare } from 'lucide-react'
+import { FeedbackModal } from '@/components/shared/FeedbackModal'
 
 type StudentData = {
   university_id: string | null
@@ -31,6 +32,7 @@ export default function StudentProfilePage() {
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -313,6 +315,20 @@ export default function StudentProfilePage() {
           </button>
         </div>
 
+        {/* Feedback */}
+        <div className="px-4 py-1">
+          <button
+            onClick={() => setFeedbackOpen(true)}
+            className="w-full flex items-center gap-3 py-3.5 text-text-primary"
+          >
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <MessageSquare size={17} className="text-primary" aria-hidden="true" />
+            </div>
+            <span className="text-sm font-display font-semibold">Deja tu feedback</span>
+            <ChevronRight size={16} className="text-text-secondary ml-auto" />
+          </button>
+        </div>
+
         {/* Logout */}
         <div className="px-4 py-1">
           <button
@@ -326,6 +342,8 @@ export default function StudentProfilePage() {
           </button>
         </div>
       </div>
+
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   )
 }

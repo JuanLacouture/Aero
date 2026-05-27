@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/utils/image-compression'
-import { ArrowLeft, Camera, LogOut, Star, CheckCircle, ToggleLeft, ToggleRight } from 'lucide-react'
+import { ArrowLeft, Camera, LogOut, Star, CheckCircle, ToggleLeft, ToggleRight, MessageSquare, ChevronRight } from 'lucide-react'
+import { FeedbackModal } from '@/components/shared/FeedbackModal'
 import { cn } from '@/lib/utils'
 
 type VendorData = {
@@ -45,6 +46,7 @@ export default function VendorProfilePage() {
   const [savingProfile, setSavingProfile] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [togglingOpen, setTogglingOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [savedVendor, setSavedVendor] = useState(false)
   const [savedProfile, setSavedProfile] = useState(false)
   const [vendorError, setVendorError] = useState('')
@@ -415,6 +417,20 @@ export default function VendorProfilePage() {
         <p className="text-sm font-body text-text-primary">{email}</p>
       </div>
 
+      {/* Feedback */}
+      <div className="mx-4 mt-3 bg-white rounded-card shadow-sm px-4 py-1">
+        <button
+          onClick={() => setFeedbackOpen(true)}
+          className="w-full flex items-center gap-3 py-3.5 text-text-primary"
+        >
+          <div className="w-9 h-9 rounded-xl bg-vendor/10 flex items-center justify-center shrink-0">
+            <MessageSquare size={17} className="text-vendor" aria-hidden="true" />
+          </div>
+          <span className="text-sm font-display font-semibold">Deja tu feedback</span>
+          <ChevronRight size={16} className="text-text-secondary ml-auto" />
+        </button>
+      </div>
+
       {/* Cerrar sesión */}
       <div className="mx-4 mt-4">
         <button
@@ -425,6 +441,8 @@ export default function VendorProfilePage() {
           Cerrar sesión
         </button>
       </div>
+
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   )
 }
